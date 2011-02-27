@@ -300,74 +300,6 @@ class VoipExtension {
   }
 
   /**
-   * Set the extension name value corresponding to the voip extension.
-   *
-   * @return
-   *   TRUE if the extension name field gets saved else FALSE.
-   */
-  public function setExtensionName() {
-    if (isset($this->extensionName) && trim($this->extensionName) != '') {
-      $attributes = array();
-      $attributes['extension_name'] = $this->extensionName;
-      return $this->setAttributes($attributes);
-    }
-    else {
-			throw new Exception(t('Extension name field value is missing.'));
-    }
-  }
-
-  /**
-   * Set the script name value corresponding to the voip extension.
-   *
-   * @return
-   *   TRUE if the script name field gets saved else FALSE.
-   */
-  public function setscriptName() {
-    if (isset($this->scriptName) && trim($this->scriptName) != '') {
-      $attributes = array();
-      $attributes['script_name'] = $this->scriptName;
-      return $this->setAttributes($attributes);
-    }
-    else {
-			throw new Exception(t('Script name field value is missing.'));
-    }
-  }
-
-  /**
-   * Set the extension status value corresponding to the voip extension.
-   *
-   * @return
-   *   TRUE if the extension status field gets saved else FALSE.
-   */
-  public function setextensionEnabled() {
-    if (isset($this->extensionEnabled) && trim($this->extensionEnabled) != '') {
-      $attributes = array();
-      $attributes['extension_status'] = $this->extensionEnabled;
-      return $this->setAttributes($attributes);
-    }
-    else {
-			throw new Exception(t('Extension status field value is missing.'));
-    }
-  }
-
-  /**
-   * Set the extension listed status value corresponding to the voip extension.
-   *
-   * @return
-   *   TRUE if the extension listed status field gets saved else FALSE.
-   */
-  public function setExtensionListed() {
-    if (isset($this->extensionListed) && trim($this->extensionListed) != '') {
-      $attributes = array();
-      $attributes['extension_listed'] = $this->extensionListed;
-      return $this->setAttributes($attributes);
-    }
-    else {
-			throw new Exception(t('Extension listed field value is missing.'));
-    }
-  }
-
-  /**
    * Save the voip extension attributes, It saves only public attributes.
    *
    * @return
@@ -391,19 +323,6 @@ class VoipExtension {
       $attributes['extension_listed'] = $this->extensionListed;
     }
 
-    return $this->setAttributes($attributes);
-  }
-
-  /**
-   * Save multiple attirbutes of the voip extension.
-   * @param $attributes
-   *   An array having the attributes in the key value pair.
-   *   Key is the column name of voipextensions table.
-   *
-   * @return
-   *   TRUE if the save is successfull else FALSE
-   */
-  private function setAttributes($attributes) {
     require_once dirname(__FILE__) .'/voipextension.field_operations.inc';
     require_once dirname(__FILE__) .'/voipextension.helper.inc';
     require_once dirname(__FILE__) .'/voipextension.constants.inc';
