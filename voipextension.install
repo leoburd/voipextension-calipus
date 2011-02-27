@@ -1,0 +1,182 @@
+<?php
+/**
+ * @file
+ *
+ * Installation hooks and the instructions for the voip extension module.
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function voipextension_install() {
+  drupal_install_schema('voipextension');
+  drupal_load('module', 'content');
+  content_notify('install', 'voipextension');
+//  db_query("UPDATE {system} SET weight = %d WHERE name = '%s' AND type = '%s'", 100, 'voipextension', 'module');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function voipextension_uninstall() {
+  require_once dirname(__FILE__) . '/includes/voipextension.field_operations.inc';
+  require_once dirname(__FILE__) . '/includes/voipextension.constants.inc';
+  // Delete all the existing voip extension fields from all the content types
+  voipextension_delete_fields();
+
+  drupal_uninstall_schema('voipextension');
+  drupal_load('module', 'content');
+  content_notify('uninstall', 'voipextension');
+//  db_query("UPDATE {system} SET weight = %d WHERE name = '%s' AND type = '%s'", 0, 'voipextension', 'module');
+
+  variable_del('voipextension_script_name');
+  variable_del('voipextension_status');
+}
+
+/**
+ * Implementation of hook_enable().
+ *
+ * Notify content module when this module is enabled.
+ */
+function voipextension_enable() {
+  require_once dirname(__FILE__) . '/includes/voipextension.field_operations.inc';
+  require_once dirname(__FILE__) . '/includes/voipextension.constants.inc';
+
+  drupal_load('module', 'content');
+  content_notify('enable', 'voipextension');
+  voipextension_change_fields_status(1);
+}
+
+/**
+ * Implementation of hook_disable().
+ *
+ * Notify content module when this module is disabled.
+ */
+function voipextension_disable() {
+  require_once dirname(__FILE__) . '/includes/voipextension.field_operations.inc';
+  require_once dirname(__FILE__) . '/includes/voipextension.constants.inc';
+
+  drupal_load('module', 'content');
+  content_notify('disable', 'voipextension');
+  voipextension_change_fields_status(0);
+}
+
+/**
+ * Implementation of hook_schema().
+ *
+ * @return
+ *   An array containing table name as key and the columns as the values of this array
+ */
+function voipextension_schema() {
+  $schema  = array();
+  $schema['voipextensions'] = array(
+    'description' => t('Voip Extension Data'),
+    'fields' => array(
+      'veid' => array(
+        'description' => t('Primary key: A unique voip extension id'),
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'extension_name' => array(
+        'description' => t('Voip extension name'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'script_name' => array(
+        'description' => t('Voip extension script name'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'extension_status' => array(
+        'description' => t('Voip extension status (enabled/disabled)'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'extension_listed' => array(
+        'description' => t('Extension is listed in phone directory or not.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'audio_name_fid' => array(
+        'description' => t('Audio name: Reference to {files}.fid.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'audio_description_fid' => array(
+        'description' => t('Audio description: Reference to {files}.fid.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'audio_greeting_fid' => array(
+        'description' => t('Audio greeting: Reference to {files}.fid.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('veid'),
+  );
+
+  $schema['voipextensions_instance'] = array(
+    'description' => t('N:M join table to join voip extensions to other tables.'),
+    'fields' => array(
+      'nid' => array(
+        'description' => t('Reference to {node}.nid.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'vid' => array(
+        'description' => t('Reference to {node_revisions}.vid.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'uid' => array(
+        'description' => t('Reference to {users}.uid.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'genid' => array(
+        'description' => t('Generic reference key.'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'veid' => array(
+        'description' => t('Reference to {voipextensions}.veid.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'indexes' => array(
+      'genid' => array('genid'),
+      'veid' => array('veid'),
+      'nid' => array('nid'),
+      'uid' => array('uid'),
+      'vid' => array('vid'),
+    ),
+  );
+  return $schema;
+}

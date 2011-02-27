@@ -1,0 +1,843 @@
+<?php
+/**
+ * @file
+ * Voip Extension module main routines.
+ *
+ * An implementation of a global API for voip extension manipulation.
+ */
+
+// Load the necessary include files
+module_load_include('inc', 'voipextension', 'includes/voipextension.cck_fields');
+module_load_include('inc', 'voipextension', 'includes/voipextension.field_operations');
+module_load_include('inc', 'voipextension', 'includes/voipextension.constants');
+module_load_include('inc', 'voipextension', 'includes/voipextension.form');
+
+
+/**
+ * Implementation of hook_init().
+ *
+ * Setup tasks at the initialization of the module.
+ */
+function voipextension_init() {
+  
+}
+
+/**
+ * Implementation of hook_menu().
+ *
+ * Define menu items and page callbacks.
+ */
+function voipextension_menu() {
+  $items = array();
+  $items['admin/settings/voipextension'] = array(
+    'title' => 'Voip Extensions',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('voipextension_admin_settings'),
+    'access arguments' => array(VOIPEXTENSION_ADMINISTER_EXTENSIONS),
+    'file' => 'includes/voipextension.admin.inc',
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_perm().
+ *
+ * Setup and exposes permissions to Drupal Interface
+ */
+function voipextension_perm() {
+  return array(
+    VOIPEXTENSION_HAVE_PERSONAL_EXTENSION,
+    VOIPEXTENSION_ACCESS_EXTENSION_INFO,
+    VOIPEXTENSION_ADMINISTER_EXTENSIONS,
+    VOIPEXTENSION_ALLOW_ANONYMOUS_ACCESS
+  );
+}
+
+/**
+ * Implementation of hook_elements().
+ *
+ * Returns a skeleton Form API array that defines callbacks
+ * for the voipextension widget form.
+ */
+function voipextension_elements() {
+  return array(
+    'voipextension_element' => array(
+      '#input' => TRUE,
+      '#process' => array('_voipextension_expand_voipextension'),
+      '#tree' => TRUE,
+      '#voipextension_settings' => array(),
+      '#required' => FALSE,
+      '#attributes' => array('class' => 'voipextension'),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function voipextension_theme() {
+  return array(
+    'voipextension_element' => array(
+      'arguments' => array('element'),
+      'file' => 'includes/voipextension.theme.inc'
+    ),
+    'voipextension_formatter_default' => array(
+      'arguments' => array('element' => NULL),
+      'file' => 'includes/voipextension.theme.inc'
+    ),
+    'voipextension_audio_player' => array(
+      'arguments' => array('file'),
+      'file' => 'includes/voipextension.theme.inc'
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_views_api().
+ */
+function voipextension_views_api() {
+  return array(
+    'api' => 2,
+    'path' => drupal_get_path('module', 'voipextension') .'/views',
+  );
+}
+
+/**
+ * Process a voip extension element.
+ */
+function _voipextension_expand_voipextension($element, $edit, $form_state, $form) {
+  $element['#tree'] = TRUE;
+
+  if (!isset($element['#title'])) {
+    $element['#title'] = t('Voip Extension');
+  }
+  if (empty($element['#voipextension_settings'])) {
+    $element['#voipextension_settings'] = array();
+  }
+  if (!isset($element['#default_value']) || $element['#default_value'] == 0) {
+    $element['#default_value'] = array();
+  }
+
+  $element['voipextension_settings'] = array(
+    '#type' => 'value',
+    '#value' => $element['#voipextension_settings'],
+  );
+
+  // Ensure this isn't accidentally used later.
+  unset($element['#voipextension_settings']);
+
+  // Make a reference to the settings.
+  $settings =& $element['voipextension_settings']['#value'];
+
+  if (isset($element['#default_value']['veid']) && $element['#default_value']['veid']) {
+    // Keep track of the old VEID.
+    $element['veid'] = array(
+      '#type' => 'value',
+      '#value' => $element['#default_value']['veid'],
+    );
+  }
+  
+  module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
+
+  // Fill in missing defaults, etc.
+  voipextension_normalize_settings($settings, $element['#required']);
+
+  $defaults = voipextension_empty_voipextension($settings);
+
+  if (isset($element['veid']['#value']) && $element['veid']['#value']) {
+    $defaults = voipextension_load_voipextension($element['veid']['#value']);
+  }
+
+  $fsettings =& $settings['form']['fields'];
+
+  // $defaults is not necessarily what we want.
+  // If #default_value was already specified, we want to use that, because
+  // otherwise we will lose our values on preview!
+  $fdefaults = $defaults;
+  foreach ($element['#default_value'] as $k => $v) {
+    $fdefaults[$k] = $v;
+  }
+
+  $fields = voipextension_field_names();
+  foreach ($fields as $field => $title) {
+    if (!isset($element[$field])) {
+    // @@@ Permission check hook?
+//      if ($fsettings[$field]['collect'] != 0) {
+        $element[$field] = voipextension_invoke_voipextensionapi($fdefaults[$field], 'field_expand', $field, $fsettings[$field]['collect'], $fdefaults);
+        $element[$field]['#weight'] = (int)$fsettings[$field]['weight'];
+//      }
+    }
+  }
+  return $element;
+}
+
+/**
+ * Implementation of hook_voipextensionapi().
+ *
+ * Expose a hook to other modules for doing operations on voip extension api.
+ */
+function voipextension_voipextensionapi(&$obj, $op, $a3 = NULL, $a4 = NULL, $a5 = NULL) {
+  switch ($op) {
+    case 'fields':
+      return array(
+        'extension_name' => t('Voip Extension Name'),
+        'script_name' => t('Voip Extension Script Name'),
+        'extension_status' => t('Voip Extension Status')
+      );
+      break;
+    case 'defaults':
+      return array(
+        'veid'             => array('default' => FALSE),
+        'extension_name'   => array('default' => '', 'collect' => 1, 'weight' => 2),
+        'script_name'      => array('default' => variable_get('voipextension_script_name', ''), 'collect' => 1, 'weight' => 4),
+        'extension_status' => array('default' => variable_get('voipextension_status', ''), 'collect' => 1, 'weight' => 5),
+      );
+      break;
+    case 'validate':
+      break;
+    case 'field_expand':
+      switch ($a3) {
+        case 'extension_name':
+          if ((arg(0) == 'node' || arg(0) == 'user') && is_numeric(arg(1)) && arg(2) == 'edit' && user_access(VOIPEXTENSION_ADMINISTER_EXTENSIONS)) {
+            $extension_name_field = 'textfield';
+          }
+          else {
+            $extension_name_field = 'value';
+          }
+
+          if (arg(0) == 'admin') {
+            $extension_name_title = t('Default Extension Name');
+          }
+          else {
+            $extension_name_title = t('Voip Extension Name');
+          }
+
+          return array(
+            '#type'           => $extension_name_field,
+            '#title'          => $extension_name_title,
+            '#default_value'  => $obj,
+            '#size'           => 64,
+            '#maxlength'      => 255,
+            '#attributes'     => NULL
+          );
+
+        case 'script_name':
+          if (arg(0) == 'admin') {
+            $script_name_title = t('Default Script Name');
+          }
+          else {
+            $script_name_title = t('Script Name');
+          }
+
+          // Define form field as visible textfield/checkbox if user is having admin rights else a hidden value field.
+          if (user_access(VOIPEXTENSION_ADMINISTER_EXTENSIONS)) {
+            $script_name_field = 'textfield';
+          }
+          else {
+            $script_name_field = 'value';
+          }
+
+          return array(
+            '#type'           => $script_name_field,
+            '#title'          => $script_name_title,
+            '#default_value'  => $obj,
+            '#size'           => 64,
+            '#maxlength'      => 255,
+            '#required'       => TRUE,
+          );
+
+        case 'extension_status':
+          if (arg(0) == 'admin') {
+            $extension_status_title = t('Default Extension status');
+          }
+          else {
+            $extension_status_title = t('Extension status');
+          }
+          if (user_access(VOIPEXTENSION_ADMINISTER_EXTENSIONS)) {
+            return array(
+              '#title' => $extension_status_title,
+              '#type' => 'radios',
+              '#options' => array(1 => t('Enabled'), 0 => t('Disabled')),
+              '#default_value'  => $obj,
+              '#required'       => TRUE,
+            );
+          }
+          else {
+            return array(
+              '#title' => $extension_status_title,
+              '#type' => 'value',
+              '#default_value' => $obj,
+              '#required'      => TRUE,
+            );
+          }
+      }
+      break;
+//    case 'instance_links':
+//      foreach ($obj as $k => $v) {
+//        if (substr($v['genid'], 0, 4) == 'cck:') {
+//          $data = explode(':', $v['genid']);
+//          $obj[$k]['href'] = 'node/'. $data[2];
+//          $obj[$k]['title'] = t('CCK Voip Extension');
+//          $obj[$k]['type'] = t('CCK Voip Extension');
+//        }
+//      }
+//      break;
+  }
+}
+
+/**
+ * Invoke a hook_voipextensionapi() operation on all modules.
+ *
+ * @param $voipextension
+ *   A Voip Extension object/array.
+ * @param $op
+ *   A string containing the name of the voipextensionapi operation.
+ * @param $a3, $a4, $a5
+ *   Arguments to pass on to the hook.
+ * @return
+ *   The returned value of the invoked hooks.
+ */
+function voipextension_invoke_voipextensionapi(&$voipextension, $op, $a3 = NULL, $a4 = NULL, $a5 = NULL) {
+  $return = array();
+  foreach (module_implements('voipextensionapi') as $name) {
+    $function = $name .'_voipextensionapi';
+    $result = $function($voipextension, $op, $a3, $a4, $a5);
+    if (isset($result) && is_array($result)) {
+      $return = array_merge($return, $result);
+    }
+    else if (isset($result)) {
+      $return[] = $result;
+    }
+  }
+  return $return;
+}
+
+/**
+ * Implementation of hook_field_info().
+ */
+function voipextension_field_info() {
+  return array(
+    'voipextension' => array(
+      'label' => t('Voip Extension'),
+      'description' => t('Store a voipextension.module Voip Extension.'),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_field_settings().
+ */
+function voipextension_field_settings($op, $field) {
+  switch ($op) {
+    case 'form':
+      $form = array();
+      return $form;
+      break;
+    case 'save':
+      return array('veid');
+      break;
+    case 'database columns':
+      return array(
+        'veid' => array(
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+        ),
+      );
+      break;
+    case 'views data':
+      // We want to for the most part use the CCK stuff, but we also want to patch in a relationship so voipextension's views support can target
+      // cck fields directly.
+      $table = content_views_tablename($field);
+      $db_info = content_database_info($field);
+      $field_alias = $db_info['columns']['veid']['column'];
+      $data = content_views_field_views_data($field);
+      $data[$table][$field_alias]['relationship'] = array(
+        'base' => 'voipextensions',
+        'field' => 'veid',
+        'handler' => 'views_handler_relationship',
+        'label' => t('Voip Extension'),
+      );
+      return $data;
+  }
+}
+
+/**
+ * Implementation of hook_field().
+ */
+function voipextension_field($op, &$node, $field, &$items, $teaser, $page) {
+  switch ($op) {
+    case 'insert':
+    case 'update':
+      // Store instances of voip extensions by field name and vid.
+      $criteria = array(
+        'genid' => 'cck:'. $field['field_name'] .':'. $node->vid,
+        'vid' => $node->vid,
+        'nid' => $node->nid,
+        'uid' => $node->uid
+      );
+
+      // Update the extension name for the available voip extensions.
+      foreach ($items as $item_index => $item) {
+        if (isset($items[$item_index]['extension_name']) && trim($items[$item_index]['extension_name']) != '') {
+
+        }
+        else {
+          if (!isset($node->title) || $node->title == '') {
+            $items[$item_index]['extension_name'] = $node->name;
+          }
+          else {
+            $items[$item_index]['extension_name'] = $node->title;
+          }
+        }
+      }
+      module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
+      $veid_array = voipextension_save_voipextensions($items, $criteria);
+      if (count($veid_array) > 0) {
+        _voipextension_save_directory_data($node, $veid_array);
+      }
+      // CCK automatically picks up the new veids and stores them in its own tables.
+      break;
+
+    case 'load':
+      module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
+      $voipextensions = array();
+      // Voip Extensions are being cached by CCK now. Load the full voip extension.
+      foreach ($items as $item) {
+        $voipextensions[] = voipextension_load_voipextension($item['veid']);
+      }
+      return array($field['field_name'] => $voipextensions);
+      break;
+    case 'delete':
+      module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
+      // Use the CCK storage to figure out the vids that need to be deleted,
+      // and clean up all the applicable references.
+      $db_info = content_database_info($field);
+      $result = db_query('SELECT vid FROM {'. $db_info['table'] .'} WHERE nid = %d', $node->nid);
+      while ($row = db_fetch_object($result)) {
+        $genid = 'cck:'. $field['field_name'] .':'. $row->vid;
+        $voip_extentsions = array();
+        voipextension_save_voipextensions($voip_extentsions, array('genid' => $genid));
+      }
+      break;
+
+    case 'delete revision':
+      module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
+      $genid = 'cck:'. $field['field_name'] .':'. $node->vid;
+      $voip_extentsions = array();
+      voipextension_save_voipextensions($voip_extentsions, array('genid' => $genid));
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_field_formatter_info().
+ */
+function voipextension_field_formatter_info() {
+  $info = array(
+    'default' => array(
+      'label' => t('Default (Voip Extension)'),
+      'field types' => array('voipextension'),
+    ),
+  );
+  return $info;
+}
+
+/**
+ * Implementation of hook_widget_info().
+ */
+function voipextension_widget_info() {
+  return array(
+    'voipextension' => array(
+      'label' => t('Voip Extension Field'),
+      'field types' => array('voipextension'),
+      'callbacks' => array(
+      ),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_widget().
+ */
+function voipextension_widget(&$form, &$form_state, $field, $items, $delta = 0) {
+  if ($field['widget']['type'] == 'voipextension') {
+    module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
+    $settings = $field['voipextension_settings'];
+
+    // Load voip extension data for existing voip extensions.
+    if (isset($items[$delta]['veid']) && $items[$delta]['veid']) {
+      // Are we in a node preview?
+      // If we aren't, then we only have the veid, because that's all cck
+      // actually knows about internally. So, we have to pull in the voip extension
+      // at this point.
+      if (empty($items[$delta]['cck_preview_in_progress'])) {
+        $voipextension = voipextension_load_voipextension($items[$delta]['veid']);
+      }
+      else {
+        // Otherwise, the data was already populated and we're running
+        // off the form state.
+        $voipextension = $items[$delta];
+      }
+    }
+    // Load voip extension data passed by cck.
+    else if (isset($items[$delta]) && is_array($items[$delta]) && !empty($items[$delta])) {
+
+      // Initialize empty voip extension.
+      $voipextension = voipextension_empty_voipextension($settings);
+      foreach ($items[$delta] as $k => $v) {
+        $voipextension[$k] = $v;
+      }
+
+      // We can't trust that CCK is giving us the right information.
+      // It can't tell us whether $items is defaults or multistep values.
+      // Voip Extension *needs* the defaults to match the initial field values,
+      // so we re-calculate the defaults here and stash them into the settings.
+      $temp = content_default_value($form, $form_state, $field, 0);
+      if (is_array($temp) && isset($temp[$delta]) && is_array($temp[$delta])) {
+        foreach ($temp[$delta] as $k => $v) {
+          $settings['form']['fields'][$k]['default'] = $v;
+        }
+      }
+    }
+
+    $element = array(
+      '#type' => 'voipextension_element',
+      '#title' => t($field['widget']['label']),
+      '#description' => t($field['widget']['description']),
+      '#required' => $field['required'],
+      '#voipextension_settings' => $settings,
+      '#default_value' => $voipextension,
+    );
+    // This is used to determine whether we are in a preview or not, because
+    // several pieces of code work differently when previewing.
+    $element['cck_preview_in_progress'] = array(
+      '#type' => 'value',
+      '#value' => TRUE,
+    );
+    return $element;
+  }
+}
+
+/**
+ * Checks if a voipextension is empty, and sets up an array of filled fields.
+ *
+ * @param $voipextension
+ *   The voipextension to check.
+ * @param $filled
+ *   An array (Will contain the list of filled fields upon return.)
+ *
+ * @return
+ *   TRUE if the voipextension is empty, FALSE otherwise.
+ */
+function voipextension_is_empty($voipextension, &$filled) {
+  // Special case: Consider an empty array to be empty.
+  if (empty($voipextension)) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+
+/**
+ * Implementation of hook_form_alter().
+ */
+function voipextension_form_alter(&$form, &$form_state, $form_id) {
+  switch ($form_id) {
+    case 'user_profile_form':
+      require_once drupal_get_path('module', 'node') .'/node.pages.inc';
+
+      // Allow other modules to customize the used profile types, so modules
+      // can easily customize the modification form.
+      $default_types = content_profile_get_types('names');
+      // If the content profile already does not exists. because of permission issues
+      $form += array('#content_profile_registration_use_types' => $default_types);
+      $new_node = 0;
+      foreach ($form['#content_profile_registration_use_types'] as $type => $typename) {
+        $node = content_profile_load($type, $form['#uid']);
+        if (!$node) {
+          content_profile_registration_add_profile_form($type, $form, $form_state);
+          $new_node++;
+        }
+      }
+
+      // If it is a new node then this is required because we are editing a user profile and content profile requires this to create a node
+      if ($new_node > 0) {
+        $form_state['user'] = user_load(array('uid' => $form['#uid']));
+      }
+
+      // If content profile exists already for this user.
+      $form += array('#voipextension_use_types' => $default_types);
+
+      foreach ($form['#voipextension_use_types'] as $type => $typename) {
+        $node = content_profile_load($type, $form['#uid']);
+        if ($node) {
+          voipextension_modify_profile_form($type, $form, $form_state);
+        }
+      }
+      break;
+    case 'user_register':
+      // If the user is not having right permission then remove the content profile validate and submit hooks
+      if (!user_access(VOIPEXTENSION_HAVE_PERSONAL_EXTENSION)) {
+        $form['#validate'] = array_diff($form['#validate'], array('content_profile_registration_user_register_validate'));
+        $form['#submit'] = array_diff($form['#submit'], array('content_profile_registration_user_register_submit'));
+      }
+      else {
+        // If the user is having the permission to have personal voip extension and the user is also having permission to add new users
+        // then check if the new user that is registered now must have permission of voip extension
+        // It manually submits the content profile form after checking the permission.
+        $form['#submit'] = array_diff($form['#submit'], array('content_profile_registration_user_register_submit'));
+        $form['#submit'][] = 'voipextension_user_register_submit';
+      }
+      break;
+    case 'content_field_overview_form':
+      voipextension_content_field_overview_form_alter($form, $form_state);
+      $form['#validate'][] = 'voipextension_content_field_overview_form_validate';
+      $form['#submit'][]   = 'voipextension_content_field_overview_form_submit';
+      break;
+    case 'content_field_edit_form':
+      if ($form['#field']['type'] == 'voipextension' && $form['#field']['module'] == 'voipextension') {
+        $form['field']['multiple']['#type'] = 'value';
+        $form['field']['multiple']['#default_value'] = 0;
+        $form['field']['multiple']['#value'] = 0;
+
+        $form['field']['#attributes'] = array(
+          'style' => 'display:none;'
+        );
+      }
+      break;
+      case 'content_field_remove_form':
+        $submit_array = $form['#submit'];
+        $form['#submit'] = array();
+        $form['#submit'][] = 'voipextension_content_field_remove_form_submit';
+        foreach ($submit_array as $index => $submit_function) {
+          $form['#submit'][] = $submit_function;
+        }
+        break;
+  }
+}
+
+/**
+ * Implementation of hook_user().
+ */
+function voipextension_user($op, &$edit, &$account, $category = NULL) {
+  switch ($op) {
+    // The user object has been updated and changed. Use this if (probably along with 'insert') if you want to reuse some information from
+    // the user object.
+    case 'after_update':
+      break;
+    // A set of user information categories is requested.
+    case 'categories':
+      break;
+    // The user account is being deleted. The module should remove its custom additions to the user object from the database.
+    case 'delete':
+      break;
+    // The user account edit form is about to be displayed. The module should present the form elements it wishes to inject into the form.
+    case 'form':
+      break;
+    // The user account is being added. The module should save its custom additions to the user object into the database and set the saved
+    // fields to NULL in $edit.
+    case 'insert':
+      break;
+    // The user account is being loaded. The module may respond to this and insert additional information into the user object.
+    case 'load':
+      break;
+    // The user just logged in.
+    case 'login':
+      break;
+    // The user just logged out.
+    case 'logout':
+      break;
+    // The user account registration form is about to be displayed. The module should present the form elements it wishes to inject into
+    // the form.
+    case 'register':
+      break;
+    // Modify the account before it gets saved.
+    case 'submit':
+      break;
+    // The user account is being changed. The module should save its custom additions to the user object into the database and set the
+    // saved fields to NULL in $edit.
+    case 'update':
+      break;
+    // The user account is about to be modified. The module should validate its custom additions to the user object, registering errors as
+    // necessary.
+    case 'validate':
+      break;
+    // The user's account information is being displayed. The module should format its custom additions for display, and add them to the
+    // $account->content array.
+    case 'view':
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function voipextension_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  switch ($op) {
+    // the $node->content array has been rendered, so the node body or teaser is filtered and now contains HTML. This op should only be
+    // used when text substitution, filtering, or other raw text operations are necessary.
+    case 'alter':
+      break;
+    // The node is being deleted.
+    case 'delete':
+      break;
+    // The revision of the node is deleted. You can delete data associated with that revision.
+    case 'delete revision':
+      break;
+    // The node has just been created (inserted in the database).
+    case 'insert':
+      break;
+    // The node is about to be loaded from the database. This hook can be used to load additional data at this time.
+    case 'load':
+      break;
+    // The node is about to be shown on the add/edit form.
+    case 'prepare':
+      break;
+    // The node is being cloned for translation. Load additional data or copy values from $node->translation_source.
+    case 'prepare translation':
+      break;
+    // # Prepare a node view for printing. Used for printer-friendly view in book_module # "rss item": An RSS feed is generated. The module
+    // can return properties to be added to the RSS item generated for this node. See comment_nodeapi() and upload_nodeapi() for examples.
+    // The $node passed can also be modified to add or remove contents to the feed item.
+    case 'print':
+      break;
+    // The node is displayed as a search result. If you want to display extra information with the result, return it.
+    case 'rss item':
+      break;
+    // The node passed validation and is about to be saved. Modules may use this to make changes to the node before it is saved to the
+    // database.
+    case 'search result':
+      break;
+    // The node has just been updated in the database.
+    case 'presave':
+      break;
+    // The node has just been updated in the database.
+    case 'update':
+      break;
+    // The node is being indexed. If you want additional information to be indexed which is not already visible through nodeapi "view",
+    // then you should return it here.
+    case 'update index':
+      break;
+    // The user has just finished editing the node and is trying to preview or submit it. This hook can be used to check the node data.
+    // Errors should be set with form_set_error().
+    case 'validate':
+      break;
+    // The node content is being assembled before rendering. The module may add elements $node->content prior to rendering. This hook will
+    // be called after hook_view(). The format of $node->content is the same as used by Forms API.
+    case 'view':
+      // Redirects a user to the user profile page, if the selected node is a content profile and we are on the node view page.
+      if (is_content_profile($node->type) && arg(0) == 'node' && is_numeric(arg(1)) && arg(2) == '') {
+        drupal_goto('user/'. $node->uid);
+      }
+      break;
+  }
+}
+
+function voipextension_display() {
+
+}
+
+/**
+ * CCK Emptiness check.
+ */
+function voipextension_content_is_empty($item, $field) {
+//  $fields = array();
+//  if (voipextension_is_empty($item, $fields)) {
+//    return TRUE;
+//  }
+  return FALSE;
+}
+
+/**
+ * Implementation of hook_views_pre_render().
+ *
+ * Format the fields exposed by voipextension custom views.
+ * Add audio players and formats the status labels
+ *
+ * @param $view
+ *   An object of the current view going to be rendered
+ */
+function voipextension_views_pre_render(&$view) {
+  switch ($view->name) {
+    case 'voipextensions':
+      module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
+      foreach ($view->result as $index => $view_field) {
+        // Extension status
+        if ($view_field->voipextensions_extension_status == 1) {
+          $view->result[$index]->voipextensions_extension_status = t('Enabled');
+        }
+        else {
+          $view->result[$index]->voipextensions_extension_status = t('Disabled');
+        }
+        // Extension listed in phone directory or not
+        if ($view_field->voipextensions_extension_listed == 1) {
+          $view->result[$index]->voipextensions_extension_listed = t('Yes');
+        }
+        else {
+          $view->result[$index]->voipextensions_extension_listed = t('No');
+        }
+        // Audio name player
+        if ($view_field->voipextensions_audio_name_fid) {
+          $file = _voipextension_get_file_info($view_field->voipextensions_audio_name_fid);
+          $view->result[$index]->voipextensions_audio_name_fid = theme('voipextension_audio_player', $file);
+        }
+        else {
+          $view->result[$index]->voipextensions_audio_name_fid = '';
+        }
+
+        // Audio description player
+        if ($view_field->voipextensions_audio_description_fid) {
+          $file = _voipextension_get_file_info($view_field->voipextensions_audio_description_fid);
+          $view->result[$index]->voipextensions_audio_description_fid = theme('voipextension_audio_player', $file);
+        }
+        else {
+          $view->result[$index]->voipextensions_audio_description_fid = '';
+        }
+
+        // Audio greeting player
+        if ($view_field->voipextensions_audio_greeting_fid) {
+          $file = _voipextension_get_file_info($view_field->voipextensions_audio_greeting_fid);
+          $view->result[$index]->voipextensions_audio_greeting_fid = theme('voipextension_audio_player', $file);
+        }
+        else {
+          $view->result[$index]->voipextensions_audio_greeting_fid = '';
+        }
+      }
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_views_post_render().
+ *
+ * Convert the non html content to html.
+ * @param $view
+ *   An object of view.
+ * @param $output
+ *   Themed output of view.
+ * @param $cache
+ */
+function voipextension_views_post_render(&$view, &$output, &$cache) {
+  switch ($view->name) {
+    case 'voipextensions':
+      foreach ($view->result as $index => $view_field) {
+        // Audio name
+        if ($view_field->voipextensions_audio_name_fid) {
+          $view->result[$index]->voipextensions_audio_name_fid = html_entity_decode($view->result[$index]->voipextensions_audio_name_fid);
+        }
+
+        // Audio desription
+        if ($view_field->voipextensions_audio_description_fid) {
+          $view->result[$index]->voipextensions_audio_description_fid = html_entity_decode($view->result[$index]->voipextensions_audio_description_fid);
+        }
+
+        // Audio Greeting
+        if ($view_field->voipextensions_audio_greeting_fid) {
+          $view->result[$index]->voipextensions_audio_greeting_fid = html_entity_decode($view->result[$index]->voipextensions_audio_greeting_fid);
+        }
+      }
+      $output = html_entity_decode($output);
+      break;
+  }
+}

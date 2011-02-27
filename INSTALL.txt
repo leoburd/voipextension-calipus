@@ -1,0 +1,44 @@
+REQUIREMENTS
+------------
+This version of Voip Extension is designed for Drupal 6.x. It should work on both Unix platforms and Windows, but the
+latter has not been tested.
+
+INSTALLATION
+------------
+
+  1. Extract and Copy the module to sites/all/modules/ directory under your Drupal installation directory.
+
+  2. Go to [Administer >> Site building >> Modules]. Install and configure the modules required by Voip Extension module.
+     After installing/enabling the required modules enable the Voip Extension module.
+
+  3. Go to [Administer >> Site configuration >> Voip Extensions] to set the configuration options.
+     Set the default script name and the default status of the CCK fields.
+
+
+  [INTEGRATION WITH NODE]
+
+  4. After configuring the module, go to the content types section [Administer >> Content management].
+     Choose the option "Manage Fields" for any content type. and create a new field of type Voip Extension.
+     Configure the default values for the selected cck field and save the form.
+
+  5. Now visit the node/add/[Content-Type-Chosen] and you will see voip extension and voip directory fields there.
+     Now you have voip extension module running with your content types.
+
+
+  [INTEGRATION WITH USER PROFILE]
+
+  6. Go to [Administer >> Content management >> Edit Profile] and from the bottom fieldset "Content Profile",
+     Select the option "Use this content type as a content profile for users".
+
+  7. After the above step, Go to [Administer >> Content management >> Profile] and Manage Fields tab.
+     Choose an existing Voip Extension field or create a new one. Save the default values for the profile content type.
+
+  8. After creating the Voip Extension field visit [Administer >> Content management >> Profile] and Content Profile tab.
+     Choose the required options as per your convenience. Please choose "Profile edit tab: " as none because this module
+     supports editing of Profile content type from its internal methods only.
+
+
+  9. To view the data stored in the nodes or with users. simply go to [Administer >> Site building >> Views] and
+     enable the "voipextensions" view.
+
+     That's it. You now have voip extension module running.

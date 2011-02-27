@@ -1,0 +1,6 @@
+Originally developed and implemented by:
+  Calipus Software  (user name 'Calipus Software - A Drupal Specialist Company':  http://drupal.org/user/807950)
+
+
+Maintained and Sponsored by:
+  Leo Burd (user name 'leoburd' http://drupal.org/user/20159)
