@@ -15,7 +15,6 @@
  * @todo Some bug is here, while deleting cck fields.
  */
 function voipextension_delete_fields() {
-  return FALSE;
   $fields = array(VOIPEXTENSION_EXTENSION_LISTED, VOIPEXTENSION_AUDIO_NAME, VOIPEXTENSION_AUDIO_DESCRIPTION, VOIPEXTENSION_AUDIO_GREETING);
 //  $node_type_fields = _voipextension_get_content_type_voipextension_field();
   $node_types = node_get_types();
@@ -111,8 +110,9 @@ function _voipextension_delete_voipextension_field($node_type, $field_name = '')
   module_load_include('inc', 'content', 'includes/content.crud');
   if (!$field_name) {
     $field_name = _voipextension_get_content_type_voipextension_field($node_type);
+    $field_name = $field_name[$node_type];
   }
-  content_field_instance_delete($field_name, $node_type);
+  _voipextension_content_field_instance_delete($field_name, $node_type);
 }
 
 /**
@@ -165,7 +165,7 @@ function _voipextension_delete_extension_listed_field($node_type) {
   module_load_include('inc', 'content', 'includes/content.crud');
 
   $field = _voipextension_extension_listed_definition();
-  content_field_instance_delete($field['field_name'], $node_type);
+  _voipextension_content_field_instance_delete($field['field_name'], $node_type);
 }
 
 /**
@@ -179,9 +179,9 @@ function _voipextension_delete_extension_listed_field($node_type) {
  *   Boolean value having the status, enabled/disabled.
  */
 function _voipextension_change_extension_listed_field_status($node_type, $status = 1) {
-  db_query("UPDATE {". content_field_tablename() ."} SET active=%d WHERE field_name = '%s' AND module='%s'", $status, VOIPEXTENSION_EXTENSION_LISTED,
+  db_query("UPDATE {". content_field_tablename() ."} SET active = %d WHERE field_name = '%s' AND module = '%s'", $status, VOIPEXTENSION_EXTENSION_LISTED,
       'number');
-  db_query("UPDATE {". content_instance_tablename() ."} SET widget_active=%d WHERE field_name = '%s' AND type_name = '%s' AND widget_module='%s'",
+  db_query("UPDATE {". content_instance_tablename() ."} SET widget_active = %d WHERE field_name = '%s' AND type_name = '%s' AND widget_module = '%s'",
       $status, VOIPEXTENSION_EXTENSION_LISTED, $node_type, 'optionwidgets');
   content_clear_type_cache(TRUE);
 }
@@ -217,7 +217,7 @@ function _voipextension_delete_audio_fields($node_type) {
 
   $fields_to_delete = _voipextension_audio_fields_definitions();
   foreach ($fields_to_delete as $key => $field) {
-    content_field_instance_delete($field['field_name'], $node_type);
+    _voipextension_content_field_instance_delete($field['field_name'], $node_type);
   }
 }
 
@@ -231,9 +231,9 @@ function _voipextension_delete_audio_fields($node_type) {
 function _voipextension_change_audio_fields_status($node_type, $status = 1) {
   $fields = _voipextension_audio_fields_definitions();
   foreach ($fields as $key => $field) {
-    db_query("UPDATE {". content_field_tablename() ."} SET active=%d WHERE field_name = '%s' AND module='%s'", $status, $field['field_name'],
+    db_query("UPDATE {". content_field_tablename() ."} SET active = %d WHERE field_name = '%s' AND module = '%s'", $status, $field['field_name'],
         'filefield');
-    db_query("UPDATE {". content_instance_tablename() ."} SET widget_active=%d WHERE field_name = '%s' AND type_name = '%s' AND widget_module='%s'",
+    db_query("UPDATE {". content_instance_tablename() ."} SET widget_active = %d WHERE field_name = '%s' AND type_name = '%s' AND widget_module = '%s'",
         $status, $field['field_name'], $node_type, 'audiofield');
   }
   content_clear_type_cache(TRUE);
@@ -303,4 +303,76 @@ function _voipextension_get_voipextension_field_name($content_type) {
   $field_name = db_result(db_query('SELECT field_name FROM {'. content_instance_tablename() .'} WHERE type_name = "%s" AND widget_type = "%s" AND
     widget_module = "%s"', $content_type, 'voipextension', 'voipextension'));
   return $field_name;
+}
+
+/**
+ * Delete an existing field instance.
+ *
+ * @param $field_name
+ *   The field name to delete.
+ * @param $type_name
+ *   The content type where the field instance is going to be deleted.
+ * @param $rebuild
+ *   TRUE to clear content type caches and rebuild menu (default).
+ *   FALSE allows the caller to process several fields at a time quickly, but then
+ *   the caller is reponsible to clear content type caches and rebuild menu as soon
+ *   as all fields have been processed. For example:
+ *   @code
+ *     // Delete several fields at a time.
+ *     foreach ($fields as $field) {
+ *       content_field_instance_delete($field['field_name'], $type_name, FALSE);
+ *     }
+ *     // Clear caches and rebuild menu.
+ *     content_clear_type_cache(TRUE);
+ *     menu_rebuild();
+ *   @endcode
+ * @see content_field_instance_delete()
+ * @see content_clear_type_cache()
+ * @see menu_rebuild()
+ */
+function _voipextension_content_field_instance_delete($field_name, $type_name, $rebuild = TRUE) {
+  include_once('./'. drupal_get_path('module', 'content') .'/includes/content.admin.inc');
+
+  // Get the previous field value.
+  $field = array_pop(content_field_instance_read(array('field_name' => $field_name, 'type_name' => $type_name), TRUE));
+
+  // Invoke hook_content_fieldapi().
+  module_invoke_all('content_fieldapi', 'delete instance', $field);
+
+  db_query("DELETE FROM {". content_instance_tablename() .
+    "} WHERE field_name = '%s' AND type_name = '%s'", $field['field_name'], $field['type_name']);
+
+  // If no instances remain, delete the field entirely.
+  $instances = content_field_instance_read(array('field_name' => $field_name));
+  if (sizeof($instances) < 1) {
+    db_query("DELETE FROM {". content_field_tablename() ."} WHERE field_name = '%s'", $field['field_name']);
+    content_alter_schema($field, array());
+  }
+  // If only one instance remains, we may need to change the database
+  // representation for this field.
+  elseif (sizeof($instances) == 1 && !($field['multiple'])) {
+    // Multiple-valued fields are always stored per-field-type.
+    $instance = $instances[0];
+    $new_instance = $instance;
+    $new_instance['db_storage'] = CONTENT_DB_STORAGE_PER_CONTENT_TYPE;
+    _content_field_write($new_instance, 'update');
+
+    content_alter_schema($instance, $new_instance);
+  }
+
+  // If the deleted instance was the last field for the content type,
+  // we drop the per-type table. We also consider possibly inactive fields.
+  if (!content_field_instance_read(array('type_name' => $field['type_name']), TRUE)) {
+    $base_tablename = _content_tablename($field['type_name'], CONTENT_DB_STORAGE_PER_CONTENT_TYPE);
+    if (db_table_exists($base_tablename)) {
+      db_drop_table($ret, $base_tablename);
+    }
+  }
+
+  if ($rebuild) {
+    content_clear_type_cache(TRUE);
+    menu_rebuild();
+  }
+
+  return $field;
 }

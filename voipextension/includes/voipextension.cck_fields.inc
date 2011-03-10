@@ -18,7 +18,7 @@
  */
 function _voipextension_audio_group_defintion() {
   return array (
-    'label' => 'Voip Directory Settings',
+    'label' => 'Voip Settings',
     'group_type' => 'standard',
     'settings' =>
     array (

@@ -12,6 +12,7 @@ function voipextension_install() {
   drupal_install_schema('voipextension');
   drupal_load('module', 'content');
   content_notify('install', 'voipextension');
+  // Enable this query if the user profile form is not coming with content profile fields.
 //  db_query("UPDATE {system} SET weight = %d WHERE name = '%s' AND type = '%s'", 100, 'voipextension', 'module');
 }
 
@@ -27,6 +28,7 @@ function voipextension_uninstall() {
   drupal_uninstall_schema('voipextension');
   drupal_load('module', 'content');
   content_notify('uninstall', 'voipextension');
+  // Enable this query if the user profile form is not coming with content profile fields.
 //  db_query("UPDATE {system} SET weight = %d WHERE name = '%s' AND type = '%s'", 0, 'voipextension', 'module');
 
   variable_del('voipextension_script_name');

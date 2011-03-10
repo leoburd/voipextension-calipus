@@ -362,4 +362,104 @@ class VoipExtension {
     }
     return FALSE;
   }
+
+  /*
+   * Returns a list of extensions that match specified criteria
+   *
+   * @param $criteria
+   *   array with the query criteria for the audio entries:
+   *     ['extension_name'] :: first letters of the name of the extension to
+   *     be retrieved. NULL = any
+   *     ['extension_status'] :: 1 = return active extensions, 0 = non-active,
+   *     NULL = any
+   *     ['extension_listed'] :: 1 = return extensions listed in the diretory,
+   *     0 = not listed, NULL = any
+   *     ['get_user_extensions'] :: TRUE = user extensions are to be returned
+   *     ['get_node_extensions'] :: TRUE = node extensions are to be returned
+   *     ['type_contents'] :: specifies the type of node extensions to be
+   *     returned, or NULL for any
+   *
+   * @param $start
+   *   the directory row to start from
+   *
+   * @param $limit
+   *   the maximum number of directory rows to fetch
+   *
+   * @return
+   *   An array having the list of voipextensions if success else Boolean FALSE.
+   */
+  public static function search($criteria, $start = 0, $limit = 10) {
+    $select = 'SELECT DISTINCT(v.veid) AS veid FROM ';
+    $select_count = 'SELECT COUNT(DISTINCT(v.veid)) AS total FROM ';
+
+    $joins = ' {voipextensions} AS v INNER JOIN {voipextensions_instance} AS vei ON v.veid = vei.veid ';
+    $joins .= ' INNER JOIN {node_revisions} AS nr ON vei.vid = nr.vid INNER JOIN {node} AS n ON nr.nid = n.nid ';
+
+    $where = ' WHERE 1=1 ';
+    $args = array();
+    if (isset($criteria['extension_name'])) {
+      $where .= ' AND v.extension_name LIKE "%s%%" ';
+      $args[] = $criteria['extension_name'];
+    }
+    
+    if (isset($criteria['script_name'])) {
+      $where .= ' AND v.script_name LIKE "%s%%" ';
+      $args[] = $criteria['script_name'];
+    }
+
+    if (isset($criteria['extension_status'])) {
+      $where .= ' AND v.extension_status = %d ';
+      $args[] = $criteria['extension_status'] ? 1 : 0;
+    }
+
+    if (isset($criteria['extension_listed'])) {
+      $where .= ' AND v.extension_listed = %d ';
+      $args[] = $criteria['extension_listed'] ? 1 : 0;
+    }
+
+    $user_content_types = content_profile_get_types('names');
+    $user_content_types = array_keys($user_content_types);
+    
+    if (isset($criteria['get_user_extensions']) && is_array($user_content_types) && count($user_content_types) > 0) {
+      $where .= ' AND n.type IN ('. db_placeholders($user_content_types, 'varchar') .') ';
+      foreach ($user_content_types as $index => $content_type) {
+        $args[] = $content_type;
+      }
+    }
+    elseif (isset($criteria['get_node_extensions'])) {
+      if (is_array($user_content_types) && count($user_content_types) > 0) {
+        $where .= ' AND n.type NOT IN ('. db_placeholders($user_content_types, 'varchar') .') ';
+        foreach ($user_content_types as $index => $content_type) {
+          $args[] = $content_type;
+        }
+      }
+    }
+
+    if (isset($criteria['type_contents']) && is_array($criteria['type_contents']) && count($criteria['type_contents']) > 0) {
+      $where .= ' AND n.type IN ('. db_placeholders($criteria['type_contents'], 'varchar') .') ';
+      foreach ($criteria['type_contents'] as $index => $content_type) {
+        $args[] = $content_type;
+      }
+    }
+
+    $where .= ' AND n.status = %d ';
+    $args[] = 1;
+    $order_by = ' ORDER BY v.veid DESC ';
+    $query = $select . $joins . $where . $order_by;
+    $query_count = $select_count . $joins . $where;
+
+    $total_records_available = db_result(db_query($query_count, $args));
+    
+    if ($total_records_available > 0) {
+      $results = array();
+      $results['total_records'] = $total_records_available;
+      $results['data'] = array();
+      $result = db_query_range($query, $args, $start, $limit);
+      while ($row = db_fetch_object($result)) {
+        $results['data'][$row->veid] = self::loadExtension($row->veid);
+      }
+      return $results;
+    }
+    return FALSE;
+  }
 }

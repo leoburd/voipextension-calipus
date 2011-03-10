@@ -359,3 +359,20 @@ function _voipextension_get_nid_from_veid($veid) {
   return $nid;
 }
 
+/**
+ * Deletes the voipextension associated with the node.
+ */
+function voipextension_delete($veid) {
+  $result = db_query('DELETE FROM {voipextensions_instance} WHERE veid = %d', $veid);
+  if ($result) {
+    return db_query('DELETE FROM {voipextensions} WHERE veid = %d', $veid);
+  }
+  return FALSE;
+}
+
+/**
+ * Deletes the voipextension instance associated with the node revision.
+ */
+function voipextension_instance_revision_delete($veid, $vid) {
+  return db_query('DELETE FROM {voipextensions_instance} WHERE veid = %d AND vid = %d', $veid, $vid);
+}

@@ -30,7 +30,7 @@ define('VOIPEXTENSION_ALLOW_ANONYMOUS_ACCESS', 'allow anonymous access to voip e
 /**
  * Standard fieldset for holding voipextension fields.
  */
-define('VOIPEXTENSION_GROUP_FIELD_NAME', 'group_voip_directory_settings');
+define('VOIPEXTENSION_GROUP_FIELD_NAME', 'group_voipextension_settings');
 
 /**
  * Is voipextension field listed in voip directory or not.

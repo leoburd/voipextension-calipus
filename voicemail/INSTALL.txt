@@ -1,0 +1,15 @@
+REQUIREMENTS
+------------
+This version of Voice mailbox module is designed for Drupal 6.x. It should work on both Unix platforms and Windows, but the
+latter has not been tested.
+
+INSTALLATION
+------------
+
+1. Install the configure the required modules and their fields.
+
+2. Make sure before creating cck field of voice mailbox you must have voipextension field in your content type.
+
+2. Goto Manage Fields of any content type and then create a cck field of type "File" and then choose widget as "Voip mailbox".
+
+3. Configure the settings of the newly created field.

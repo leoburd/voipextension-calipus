@@ -1,0 +1,115 @@
+<?php
+
+define('VOICEMAIL_HAVE_MAILBOX_ACCESS', 'have voice mail box');
+define('VOICEMAIL_ADMINISTER_MAILBOX', 'administer voice mail box');
+
+module_load_include('inc', 'voicemail', 'includes/voicemail.form');
+module_load_include('inc', 'voicemail', 'includes/voicemail.helper');
+module_load_include('inc', 'voicemail', 'includes/voicemail.widget');
+
+/**
+ * Implementation of hook_init().
+ */
+function voicemail_init() {
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function voicemail_perm() {
+  return array(VOICEMAIL_HAVE_MAILBOX_ACCESS, VOICEMAIL_ADMINISTER_MAILBOX);
+}
+
+/**
+ * Implementation of hook_elements().
+ */
+function voicemail_elements() {
+  $elements = array();
+  $filefield_elements = filefield_elements();
+  $elements['voicemail_widget'] = $filefield_elements['filefield_widget'];
+
+  //Process callback
+  $elements['voicemail_widget']['#process'][] = 'voicemail_widget_process';
+  $elements['voicemail_widget']['#value_callback'] = 'voicemail_widget_value';
+  return $elements;
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function voicemail_theme() {
+  return array(
+      'voicemail_widget' => array(
+        'arguments' => array('element' => NULL),
+        'file' => 'includes/voicemail.widget.inc',
+      ),
+  );
+}
+
+/**
+ * Implementation of hook_widget_info().
+ */
+function voicemail_widget_info() {
+  return array(
+    'voicemail_widget' => array(
+      'label' => t('Voip mailbox'),
+      'field types' => array('filefield'),
+      'multiple values' => CONTENT_HANDLE_CORE,
+      'callbacks' => array('default value' => CONTENT_CALLBACK_CUSTOM),
+      'description' => t('Widget for handling voicemailbox data.'),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_widget_settings().
+ */
+function voicemail_widget_settings($op, $widget) {
+  switch ($op) {
+    case 'form':
+      return voicemail_widget_settings_form($widget);
+    case 'save':
+      return voicemail_widget_settings_save($widget);
+  }
+}
+
+/**
+ * Implementation of hook_widget().
+ *
+ * Assign default properties to item and delegate to audiorecorderfield.
+ */
+function voicemail_widget(&$form, &$form_state, $field, $items, $delta = 0) {
+  $element = filefield_widget($form, $form_state, $field, $items, $delta);
+  return $element;
+}
+
+/**
+ * Implementation of CCK's hook_default_value().
+ */
+function voicemail_default_value(&$form, &$form_state, $field, $delta) {
+  return filefield_default_value($form, $form_state, $field, $delta);
+}
+
+/**
+ * Implementation of hook_form_alter().
+ *
+ * Alter the manage fields form of cck to add some custom validations.
+ */
+function voicemail_form_alter(&$form, &$form_state, $form_id) {
+  switch ($form_id) {
+    case 'content_field_overview_form':
+      $form['#validate'][] = 'voicemail_form_content_field_overview_validate';
+      $form['#submit'][]   = 'voicemail_form_content_field_overview_submit';
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function voicemail_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  $file = './'. drupal_get_path('module', 'voicemail') ."/includes/voicemail.nodeapi.inc";
+  if (is_file($file)) {
+    require $file;
+  }
+}

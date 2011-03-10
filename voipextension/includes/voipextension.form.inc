@@ -111,6 +111,12 @@ function voipextension_modify_profile_form($type, &$form, &$form_state) {
       $weight++;
     }
   }
+  
+  module_load_include('inc', 'voipextension', 'includes/voipextension.api');
+  $voip_extension = VoipExtension::getVoipExtensionFromUid($form['#uid']);
+  if (!$voip_extension) {
+    $form[VOIPEXTENSION_GROUP_FIELD_NAME][VOIPEXTENSION_EXTENSION_LISTED]['#default_value'][0]['value'] = 1;
+  }
 }
 
 
@@ -143,8 +149,8 @@ function voipextension_user_modify_submit($form, &$form_state) {
     user_profile_form_submit($form, $form_state);
     $node = $form['#node'];
     $node->title = $node->name;
-    $node = node_submit($node, $form);
-    node_save($node, $form);
+//    $node = node_submit($node, $form);
+//    node_save($node, $form);
   }
 }
 
@@ -216,7 +222,16 @@ function voipextension_content_field_overview_form_submit($form, &$form_state) {
       $form_state['clicked_button']['#post']['_add_new_field']['widget_type'] != '' &&
       $form_state['clicked_button']['#post']['_add_new_field']['type'] == 'voipextension' &&
       $form_state['clicked_button']['#post']['_add_new_field']['widget_type'] == 'voipextension')) {
-    
+
+    if (isset($form_state['clicked_button']['#post']['_add_new_field']['widget_type']) &&
+        $form_state['clicked_button']['#post']['_add_new_field']['widget_type'] == 'voipextension') {
+      $form_state['values']['_add_new_field']['parent'] = VOIPEXTENSION_GROUP_FIELD_NAME;
+    }
+    if (isset($form_state['clicked_button']['#post']['_add_existing_field']['widget_type']) &&
+        $form_state['clicked_button']['#post']['_add_existing_field']['widget_type'] == 'voipextension') {
+      $form_state['values']['_add_existing_field']['parent'] = VOIPEXTENSION_GROUP_FIELD_NAME;
+    }
+
     $content_type = $form['#type_name'];
     _voipextension_create_extension_listed_field($content_type);
     _voipextension_create_voipextension_group($content_type);
@@ -224,9 +239,8 @@ function voipextension_content_field_overview_form_submit($form, &$form_state) {
 
     $voip_field_name = 'field_'. $form_state['clicked_button']['#post']['_add_new_field']['field_name'];
 
-
     $group_name = VOIPEXTENSION_GROUP_FIELD_NAME;
-    $fields = array($voip_field_name, VOIPEXTENSION_EXTENSION_LISTED, VOIPEXTENSION_AUDIO_NAME, VOIPEXTENSION_AUDIO_DESCRIPTION, VOIPEXTENSION_AUDIO_GREETING);
+    $fields = array(VOIPEXTENSION_EXTENSION_LISTED, VOIPEXTENSION_AUDIO_NAME, VOIPEXTENSION_AUDIO_DESCRIPTION, VOIPEXTENSION_AUDIO_GREETING);
     // Assign the voip extension fields to the selcted field group.
     foreach ($fields as $index => $field_name) {
       $form_values = array();
