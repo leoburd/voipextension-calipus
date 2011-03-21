@@ -2,7 +2,7 @@
 /**
  * @file
  *
- * Installation hooks and the instructions for the voip extension module.
+ * Installation hooks and the instructions for the VoIP Extension module.
  */
 
 /**
@@ -22,7 +22,7 @@ function voipextension_install() {
 function voipextension_uninstall() {
   require_once dirname(__FILE__) . '/includes/voipextension.field_operations.inc';
   require_once dirname(__FILE__) . '/includes/voipextension.constants.inc';
-  // Delete all the existing voip extension fields from all the content types
+  // Delete all the existing VoIP extension fields from all the content types
   voipextension_delete_fields();
 
   drupal_uninstall_schema('voipextension');
@@ -72,28 +72,28 @@ function voipextension_disable() {
 function voipextension_schema() {
   $schema  = array();
   $schema['voipextensions'] = array(
-    'description' => t('Voip Extension Data'),
+    'description' => t('VoIP Extension Data'),
     'fields' => array(
       'veid' => array(
-        'description' => t('Primary key: A unique voip extension id'),
+        'description' => t('Primary key: A unique VoIP Extension id'),
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
       'extension_name' => array(
-        'description' => t('Voip extension name'),
+        'description' => t('VoIP Extension name'),
         'type' => 'varchar',
         'length' => '255',
         'not null' => TRUE,
       ),
       'script_name' => array(
-        'description' => t('Voip extension script name'),
+        'description' => t('VoIP Extension script name'),
         'type' => 'varchar',
         'length' => '255',
         'not null' => TRUE,
       ),
       'extension_status' => array(
-        'description' => t('Voip extension status (enabled/disabled)'),
+        'description' => t('VoIP Extension status (enabled/disabled)'),
         'type' => 'int',
         'unsigned' => TRUE,
         'size' => 'tiny',
@@ -134,7 +134,7 @@ function voipextension_schema() {
   );
 
   $schema['voipextensions_instance'] = array(
-    'description' => t('N:M join table to join voip extensions to other tables.'),
+    'description' => t('N:M join table to join VoIP Extensions to other tables.'),
     'fields' => array(
       'nid' => array(
         'description' => t('Reference to {node}.nid.'),

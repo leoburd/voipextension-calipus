@@ -2,19 +2,19 @@
 /**
  * @file
  *
- * Admin page callback file for the voip extension module.
+ * Admin page callback file for the VoIP extension module.
  */
 
 /**
- * Configure voip extension settings for this site.
+ * Configure VoIP extension settings for this site.
  *
  * @ingroup forms
  * @see system_settings_form()
  */
 function voipextension_admin_settings() {
-  drupal_set_title(t('Default Voip Extension Settings'));
+  drupal_set_title(t('Default VoIP Extension Settings'));
   $form['voipextension'] = array(
-    '#title' => t('Voip Extension Settings'),
+    '#title' => t('VoIP Extension Settings'),
     '#type' => 'fieldset'
   );
 

@@ -6,7 +6,7 @@ switch ($op) {
     break;
   // The node is being deleted.
   case 'delete':
-    // If any node gets deleted then delete the corresponding voip extension.
+    // If any node gets deleted then delete the corresponding VoIP extension.
     $voipextension_field = _voipextension_get_content_type_voipextension_field($node->type);
     if (isset($voipextension_field[$node->type])) {
       $voipextension_field = $voipextension_field[$node->type];

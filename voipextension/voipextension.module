@@ -1,9 +1,9 @@
 <?php
 /**
  * @file
- * Voip Extension module main routines.
+ * VoIP Extension module main routines.
  *
- * An implementation of a global API for voip extension manipulation.
+ * An implementation of a global API for VoIP extension manipulation.
  */
 
 // Load the necessary include files
@@ -19,7 +19,7 @@ module_load_include('inc', 'voipextension', 'includes/voipextension.form');
  * Setup tasks at the initialization of the module.
  */
 function voipextension_init() {
-  
+
 }
 
 /**
@@ -30,13 +30,39 @@ function voipextension_init() {
 function voipextension_menu() {
   $items = array();
   $items['admin/settings/voipextension'] = array(
-    'title' => 'Voip Extensions',
+    'title' => 'VoIP Extensions',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('voipextension_admin_settings'),
     'access arguments' => array(VOIPEXTENSION_ADMINISTER_EXTENSIONS),
     'file' => 'includes/voipextension.admin.inc',
   );
   return $items;
+}
+
+/**
+ * Implementation of hook_menu_alter().
+ *
+ * Remove the unnecessary links from the secondary tab.
+ */
+function voipextension_menu_alter(&$items) {
+  $node_types = node_get_types();
+  foreach ($node_types as $node_type => $node_type_details) {
+    if (isset($items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_EXTENSION_LISTED])) {
+      $items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_EXTENSION_LISTED]['access callback'] = FALSE;
+    }
+
+    if (isset($items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_NAME])) {
+      $items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_NAME]['access callback'] = FALSE;
+    }
+
+    if (isset($items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_DESCRIPTION])) {
+      $items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_DESCRIPTION]['access callback'] = FALSE;
+    }
+
+    if (isset($items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_GREETING])) {
+      $items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_GREETING]['access callback'] = FALSE;
+    }
+  }
 }
 
 /**
@@ -103,13 +129,13 @@ function voipextension_views_api() {
 }
 
 /**
- * Process a voip extension element.
+ * Process a VoIP extension element.
  */
 function _voipextension_expand_voipextension($element, $edit, $form_state, $form) {
   $element['#tree'] = TRUE;
 
   if (!isset($element['#title'])) {
-    $element['#title'] = t('Voip Extension');
+    $element['#title'] = t('VoIP Extension');
   }
   if (empty($element['#voipextension_settings'])) {
     $element['#voipextension_settings'] = array();
@@ -136,7 +162,7 @@ function _voipextension_expand_voipextension($element, $edit, $form_state, $form
       '#value' => $element['#default_value']['veid'],
     );
   }
-  
+
   module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
 
   // Fill in missing defaults, etc.
@@ -180,9 +206,9 @@ function voipextension_voipextensionapi(&$obj, $op, $a3 = NULL, $a4 = NULL, $a5 
   switch ($op) {
     case 'fields':
       return array(
-        'extension_name' => t('Voip Extension Name'),
-        'script_name' => t('Voip Extension Script Name'),
-        'extension_status' => t('Voip Extension Status')
+        'extension_name' => t('Extension Name'),
+        'script_name' => t('Script Name'),
+        'extension_status' => t('Extension Status')
       );
       break;
     case 'defaults':
@@ -209,7 +235,7 @@ function voipextension_voipextensionapi(&$obj, $op, $a3 = NULL, $a4 = NULL, $a5 
             $extension_name_title = t('Default Extension Name');
           }
           else {
-            $extension_name_title = t('Voip Extension Name');
+            $extension_name_title = t('Extension Name');
           }
 
           if (arg(0) == 'user' && ctype_digit((string) arg(1)) && arg(2) == 'edit') {
@@ -320,7 +346,7 @@ function voipextension_voipextensionapi(&$obj, $op, $a3 = NULL, $a4 = NULL, $a5 
  * Invoke a hook_voipextensionapi() operation on all modules.
  *
  * @param $voipextension
- *   A Voip Extension object/array.
+ *   A VoIP Extension object/array.
  * @param $op
  *   A string containing the name of the voipextensionapi operation.
  * @param $a3, $a4, $a5
@@ -349,8 +375,8 @@ function voipextension_invoke_voipextensionapi(&$voipextension, $op, $a3 = NULL,
 function voipextension_field_info() {
   return array(
     'voipextension' => array(
-      'label' => t('Voip Extension'),
-      'description' => t('Store a voipextension.module Voip Extension.'),
+      'label' => t('VoIP Extension'),
+      'description' => t('Store a voipextension.module VoIP Extension.'),
     ),
   );
 }
@@ -387,7 +413,7 @@ function voipextension_field_settings($op, $field) {
         'base' => 'voipextensions',
         'field' => 'veid',
         'handler' => 'views_handler_relationship',
-        'label' => t('Voip Extension'),
+        'label' => t('VoIP Extension'),
       );
       return $data;
   }
@@ -400,7 +426,7 @@ function voipextension_field($op, &$node, $field, &$items, $teaser, $page) {
   switch ($op) {
     case 'insert':
     case 'update':
-      // Store instances of voip extensions by field name and vid.
+      // Store instances of VoIP extensions by field name and vid.
       $criteria = array(
         'genid' => 'cck:'. $field['field_name'] .':'. $node->vid,
         'vid' => $node->vid,
@@ -408,7 +434,7 @@ function voipextension_field($op, &$node, $field, &$items, $teaser, $page) {
         'uid' => $node->uid
       );
 
-      // Update the extension name for the available voip extensions.
+      // Update the extension name for the available VoIP extensions.
       foreach ($items as $item_index => $item) {
         if (isset($items[$item_index]['extension_name']) && trim($items[$item_index]['extension_name']) != '' &&
             trim($items[$item_index]['extension_name']) != 'Extension Name') {
@@ -434,7 +460,7 @@ function voipextension_field($op, &$node, $field, &$items, $teaser, $page) {
     case 'load':
       module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
       $voipextensions = array();
-      // Voip Extensions are being cached by CCK now. Load the full voip extension.
+      // VoIP Extensions are being cached by CCK now. Load the full VoIP extension.
       foreach ($items as $item) {
         $voipextensions[] = voipextension_load_voipextension($item['veid']);
       }
@@ -468,7 +494,7 @@ function voipextension_field($op, &$node, $field, &$items, $teaser, $page) {
 function voipextension_field_formatter_info() {
   $info = array(
     'default' => array(
-      'label' => t('Default (Voip Extension)'),
+      'label' => t('Default (VoIP Extension)'),
       'field types' => array('voipextension'),
     ),
   );
@@ -481,7 +507,7 @@ function voipextension_field_formatter_info() {
 function voipextension_widget_info() {
   return array(
     'voipextension' => array(
-      'label' => t('Voip Extension Field'),
+      'label' => t('VoIP Extension Field'),
       'field types' => array('voipextension'),
       'callbacks' => array(
       ),
@@ -523,7 +549,7 @@ function voipextension_widget(&$form, &$form_state, $field, $items, $delta = 0) 
 
       // We can't trust that CCK is giving us the right information.
       // It can't tell us whether $items is defaults or multistep values.
-      // Voip Extension *needs* the defaults to match the initial field values,
+      // VoIP Extension *needs* the defaults to match the initial field values,
       // so we re-calculate the defaults here and stash them into the settings.
       $temp = content_default_value($form, $form_state, $field, 0);
       if (is_array($temp) && isset($temp[$delta]) && is_array($temp[$delta])) {
@@ -581,13 +607,13 @@ function voipextension_form_alter(&$form, &$form_state, $form_id) {
       $voip_extension = VoipExtension::getVoipExtensionFromUid($form['#uid']);
       if (is_array($voip_extension) && count($voip_extension) > 1) {
         $form['account']['voipextension_number'] = array(
-          '#prefix' => '<div id="voipextension-number-wrapper" class="form-item"><label for="edit-voipextension-number">'.t('Voip Extension Number').': <span title="This field is required." class="form-required">*</span></label>',
+          '#prefix' => '<div id="voipextension-number-wrapper" class="form-item"><label for="edit-voipextension-number">'.t('VoIP Extension Number').': <span title="This field is required." class="form-required">*</span></label>',
           '#type' => 'markup',
           '#suffix' => '</div></div>',
           '#value' => $voip_extension['veid']
         );
       }
-      // If the current loggedin user is not having the permission to edit the voip extension fields, then return back.
+      // If the current loggedin user is not having the permission to edit the VoIP extension fields, then return back.
       if (!user_access(VOIPEXTENSION_ADMINISTER_EXTENSIONS)) {
         return TRUE;
       }
@@ -636,8 +662,8 @@ function voipextension_form_alter(&$form, &$form_state, $form_id) {
         $form['#submit'] = array_diff($form['#submit'], array('content_profile_registration_user_register_submit'));
       }
       else {
-        // If the user is having the permission to have personal voip extension and the user is also having permission to add new users
-        // then check if the new user that is registered now must have permission of voip extension
+        // If the user is having the permission to have personal VoIP extension and the user is also having permission to add new users
+        // then check if the new user that is registered now must have permission of VoIP extension
         // It manually submits the content profile form after checking the permission.
         $form['#submit'] = array_diff($form['#submit'], array('content_profile_registration_user_register_submit'));
         $form['#submit'][] = 'voipextension_user_register_submit';

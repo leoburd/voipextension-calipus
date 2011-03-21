@@ -1,6 +1,6 @@
-name = Voip Extension
+name = VoIP Extension
 package = CCK
-description = The voip extension module allows you to associated voip extension with users and content by using voipextension cck field and to the other forms by using voipextensionapi
+description = The VoIP Extension module allows you to associated VoIP Extension with users and content by using voipextension cck field and to the other forms by using voipextensionapi
 dependencies[] = content
 dependencies[] = content_profile
 dependencies[] = content_profile_registration

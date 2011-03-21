@@ -1,8 +1,8 @@
 <?php
 /**
  * @file
- * 
- * Views 2 support for Voip Extension.
+ *
+ * Views 2 support for VoIP Extension.
  */
 
 /**
@@ -15,13 +15,13 @@ function voipextension_views_data() {
   // Define the base group of this table. Fields that don't
   // have a group defined will go into this field by default.
 
-  $data['voipextensions']['table']['group'] = t('Voip Extension');
+  $data['voipextensions']['table']['group'] = t('VoIP Extension');
 
   // Advertise this table as a possible base table
   $data['voipextensions']['table']['base'] = array(
     'field' => 'veid',
-    'title' => t('Voip Extension'),
-    'help' => t('Voip Extensions are addresses of phone numbers.'),
+    'title' => t('VoIP Extension'),
+    'help' => t('VoIP Extensions are addresses of phone numbers.'),
     'weight' => -10,
   );
 
@@ -32,13 +32,13 @@ function voipextension_views_data() {
       'left_field' => 'veid',
       'field' => 'veid',
     ),
-    // Voip Extension links to node_revisions through voipextensions_instance via lid.
+    // VoIP Extension links to node_revisions through voipextensions_instance via lid.
     'node_revisions' => array(
       'left_table' => 'voipextension_instance',
       'left_field' => 'veid',
       'field' => 'veid',
     ),
-    // Voip Extension links to users through voipextensions_instance via lid.
+    // VoIP Extension links to users through voipextensions_instance via lid.
     'users' => array(
       'left_table' => 'voipextension_instance',
       'left_field' => 'veid',
@@ -52,7 +52,7 @@ function voipextension_views_data() {
   // veid
   $data['voipextensions']['veid'] = array(
     'title' => t('Veid'),
-    'help' => t('The Voip Extension ID/Number of the voip extension node/user.'),
+    'help' => t('The VoIP Extension ID/Number of the VoIP extension node/user.'),
     // Information for displaying the veid
     'field' => array(
       'handler' => 'views_handler_field',
@@ -71,7 +71,7 @@ function voipextension_views_data() {
 
   $data['voipextensions']['extension_name'] = array(
     'title' => t('Extension Name'),
-    'help' => t('The name of the voip extension.'),
+    'help' => t('The name of the VoIP extension.'),
     'field' => array(
       'handler' => 'views_handler_field',
       'click sortable' => TRUE,
@@ -89,7 +89,7 @@ function voipextension_views_data() {
 
   $data['voipextensions']['script_name'] = array(
     'title' => t('Script Name'),
-    'help' => t('The script name associated to voip extension.'),
+    'help' => t('The script name associated to VoIP extension.'),
     'field' => array(
       'handler' => 'views_handler_field',
       'click sortable' => TRUE,
@@ -107,7 +107,7 @@ function voipextension_views_data() {
 
   $data['voipextensions']['extension_status'] = array(
     'title' => t('Extension Status'),
-    'help' => t('status of a voip extension.'),
+    'help' => t('status of a VoIP extension.'),
     'field' => array(
       'handler' => 'views_handler_field',
       'click sortable' => TRUE,
@@ -125,7 +125,7 @@ function voipextension_views_data() {
 
   $data['voipextensions']['extension_listed'] = array(
     'title' => t('Extension Listed in Phone directory'),
-    'help' => t('status of a voip extension in phone directory.'),
+    'help' => t('status of a VoIP extension in phone directory.'),
     'field' => array(
       'handler' => 'views_handler_field',
       'click sortable' => TRUE,
@@ -186,7 +186,7 @@ function voipextension_views_data() {
     ),
   );
 
-  $data['voipextensions_instance']['table']['group']  = t('Voip Extension');
+  $data['voipextensions_instance']['table']['group']  = t('VoIP Extension');
 
   $data['voipextensions_instance']['table']['join'] = array(
     'voipextensions' => array(

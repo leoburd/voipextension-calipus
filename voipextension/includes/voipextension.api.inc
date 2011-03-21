@@ -2,7 +2,7 @@
 /**
  * @file
  *
- * Voip extension class for performing operations on the voip extension fields
+ * VoIP extension class for performing operations on the VoIP extension fields
  */
 class VoipExtension {
   private $veid;
@@ -24,7 +24,7 @@ class VoipExtension {
    *
    * Sets the value to private and public variables.
    * @param $veid
-   *   Voip Extension number
+   *   VoIP Extension number
    * @param $nid
    *   Node id
    * @param $uid
@@ -40,7 +40,7 @@ class VoipExtension {
     elseif (isset($uid)) {
       $voip_extension = self::getVoipExtensionFromUid($uid);
     }
-    
+
     if (isset($voip_extension) && is_array($voip_extension) && count($voip_extension) > 1) {
       $this->veid = $voip_extension['veid'];
       if (isset($voip_extension['node'])) {
@@ -60,16 +60,16 @@ class VoipExtension {
       $this->audioGreetingFid    = $voip_extension['audio_greeting_fid'];
     }
     else {
-			throw new Exception(t('VoipExtension failed to initialize due to invalid parameters'));
+			throw new Exception(t('VoIPExtension failed to initialize due to invalid parameters'));
     }
   }
 
   /**
-   * Load the voip extension related data.
+   * Load the VoIP extension related data.
    * @param $veid
-   *   voip extension id.
+   *   VoIP extension id.
    * @return
-   *   An array having all the information of voip extension and the corresponding user and the node.
+   *   An array having all the information of VoIP extension and the corresponding user and the node.
    *   Returns boolean false if no data is available.
    */
   public static function loadExtension($veid) {
@@ -94,11 +94,11 @@ class VoipExtension {
   }
 
   /**
-   * Find voip extension information from the node id.
+   * Find VoIP extension information from the node id.
    * @param $nid
    *   Node id.
    * @return
-   *   An array having the voip extension data.
+   *   An array having the VoIP extension data.
    */
   public static function getVoipExtensionFromNid($nid) {
     require_once dirname(__FILE__) .'/voipextension.helper.inc';
@@ -112,14 +112,14 @@ class VoipExtension {
   }
 
   /**
-   * Find the voip extension data for the selected user.
+   * Find the VoIP extension data for the selected user.
    * If the same user comes in the query then the data is shown by static
    * cached array.
    *
    * @param $uid
    *   Seleted User id.
    * @return
-   *   An integer Voip Extension number/id.
+   *   An integer VoIP Extension number/id.
    */
   public static function getVoipExtensionFromUid($uid) {
     static $veid, $cached_uid;
@@ -140,7 +140,7 @@ class VoipExtension {
         }
       }
     }
-    
+
     // If veid is stored/cached then call loadExtension.
     if ($veid) {
       return self::loadExtension($veid);
@@ -151,8 +151,8 @@ class VoipExtension {
   }
 
   /**
-   * Check that the current assigned voip extension number is of user or not.
-   * 
+   * Check that the current assigned VoIP extension number is of user or not.
+   *
    * @return
    *   TRUE if it is a user extension else FALSE.
    */
@@ -170,8 +170,8 @@ class VoipExtension {
   }
 
   /**
-   * Check that the current assigned voip extension number is of node or not.
-   * 
+   * Check that the current assigned VoIP extension number is of node or not.
+   *
    * @return
    *   TRUE if it is a node extension else FALSE.
    */
@@ -180,18 +180,18 @@ class VoipExtension {
   }
 
   /**
-   * Find the extension name associated with the current assigned voip extension number.
-   * 
+   * Find the extension name associated with the current assigned VoIP extension number.
+   *
    * @return
-   *   A voip extension name if found else FALSE.
+   *   A VoIP extension name if found else FALSE.
    */
   public function getExtensionName() {
     return $this->extensionName;
   }
 
   /**
-   * Find the script name associated with the current assigned voip extension number.
-   * 
+   * Find the script name associated with the current assigned VoIP extension number.
+   *
    * @return
    *   A script name if found else FALSE.
    */
@@ -200,10 +200,10 @@ class VoipExtension {
   }
 
   /**
-   * Find the extension status associated with the current assigned voip extension number.
-   * 
+   * Find the extension status associated with the current assigned VoIP extension number.
+   *
    * @return
-   *   Boolean value having the status of the voip extension. TRUE/FALSE
+   *   Boolean value having the status of the VoIP extension. TRUE/FALSE
    */
   public function getExtensionStatus() {
     return $this->extensionEnabled;
@@ -211,17 +211,17 @@ class VoipExtension {
 
   /**
    * Find that the extension is listed in phone directory or not for the
-   * current assigned voip extension number.
-   * 
+   * current assigned VoIP extension number.
+   *
    * @return
-   *   Boolean value having the status of the voip extension. TRUE/FALSE
+   *   Boolean value having the status of the VoIP extension. TRUE/FALSE
    */
   public function getExtensionListedStatus() {
     return $this->extensionListed;
   }
 
   /**
-   * Find the audio files info attached with the voip extension.
+   * Find the audio files info attached with the VoIP extension.
    * Use the helper function to find the file related information.
    *
    * @param $fid
@@ -235,8 +235,8 @@ class VoipExtension {
   }
 
   /**
-   * Get Audio name field details for the currently selected voip extension number.
-   * Call the helper function of voipextension module to get all the info of the file.
+   * Get Audio name field details for the currently selected VoIP extension number.
+   * Call the helper function of VoIPextension module to get all the info of the file.
    *
    * @return
    *   An array having all the information of the audio name file or FALSE if no data.
@@ -250,7 +250,7 @@ class VoipExtension {
   }
 
   /**
-   * Get Audio description field details for the currently selected voip extension number.
+   * Get Audio description field details for the currently selected VoIP extension number.
    * Call the helper function of voipextension module to get all the info of the file.
    *
    * @return
@@ -265,7 +265,7 @@ class VoipExtension {
   }
 
   /**
-   * Get Audio greeting field details for the currently selected voip extension number.
+   * Get Audio greeting field details for the currently selected VoIP extension number.
    * Call the helper function of voipextension module to get all the info of the file.
    *
    * @return
@@ -280,7 +280,7 @@ class VoipExtension {
   }
 
   /**
-   * Find the node id attached with the voip extension.
+   * Find the node id attached with the VoIP extension.
    * @return
    *   An integer value having the node id.
    */
@@ -300,7 +300,7 @@ class VoipExtension {
   }
 
   /**
-   * Save the voip extension attributes, It saves only public attributes.
+   * Save the VoIP extension attributes, It saves only public attributes.
    *
    * @return
    *   TRUE if the save is successfull else FALSE
@@ -318,7 +318,7 @@ class VoipExtension {
     if (isset($this->extensionEnabled) && trim($this->extensionEnabled) != '') {
       $attributes['extension_status'] = $this->extensionEnabled;
     }
-    
+
     if (isset($this->extensionListed) && trim($this->extensionListed) != '') {
       $attributes['extension_listed'] = $this->extensionListed;
     }
@@ -332,7 +332,7 @@ class VoipExtension {
     if ($nid) {
       $node = node_load(array('nid' => $nid));
       if ($node && isset($node->type)) {
-        // Check that the selected node is having the voip extension associated or not.
+        // Check that the selected node is having the VoIP extension associated or not.
         $node_type_field = _voipextension_get_content_type_voipextension_field($node->type);
 
         if ($node_type_field && isset($node_type_field[$node->type])) {
@@ -401,7 +401,7 @@ class VoipExtension {
       $where .= ' AND v.extension_name LIKE "%s%%" ';
       $args[] = $criteria['extension_name'];
     }
-    
+
     if (isset($criteria['script_name'])) {
       $where .= ' AND v.script_name LIKE "%s%%" ';
       $args[] = $criteria['script_name'];
@@ -419,7 +419,7 @@ class VoipExtension {
 
     $user_content_types = content_profile_get_types('names');
     $user_content_types = array_keys($user_content_types);
-    
+
     if (isset($criteria['get_user_extensions']) && is_array($user_content_types) && count($user_content_types) > 0) {
       $where .= ' AND n.type IN ('. db_placeholders($user_content_types, 'varchar') .') ';
       foreach ($user_content_types as $index => $content_type) {
@@ -449,7 +449,7 @@ class VoipExtension {
     $query_count = $select_count . $joins . $where;
 
     $total_records_available = db_result(db_query($query_count, $args));
-    
+
     if ($total_records_available > 0) {
       $results = array();
       $results['total_records'] = $total_records_available;

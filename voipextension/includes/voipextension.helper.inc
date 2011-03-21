@@ -1,8 +1,8 @@
 <?php
 /**
  * @file
- * 
- * This is an helper file having all the functions required to do operations 
+ *
+ * This is an helper file having all the functions required to do operations
  * on the voipextension field.
  */
 
@@ -45,7 +45,7 @@ function voipextension_normalize_settings(&$settings, $required = TRUE) {
 
 
 /**
- * Returns an empty voip extension object based on the given settings.
+ * Returns an empty VoIP extension object based on the given settings.
  */
 function voipextension_empty_voipextension($settings) {
   $voipextension = array();
@@ -81,16 +81,16 @@ function voipextension_field_names() {
 }
 
 /**
- * Load a single voip extension by veid.
+ * Load a single VoIP extension by veid.
  *
  * @param $veid
- *   Voip Extension ID to load.
+ *   VoIP Extension ID to load.
  * @return
- *   A voip extension array.
+ *   A VoIP extension array.
  */
 function voipextension_load_voipextension($veid) {
   static $cached_veid, $voipextension;
-  
+
   if (!$cached_veid || $cached_veid != $veid) {
     $voipextension = array();
     $voipextension = db_fetch_array(db_query('SELECT * FROM {voipextensions} WHERE veid = %d', $veid));
@@ -109,7 +109,7 @@ function voipextension_load_voipextension($veid) {
  *   The associated voipextensions.
  *   You can pass an empty array to remove all voipextension references associated
  *   with the given criteria. This is useful if you are about to delete an object,
- *   and need Voip Extension to clean up any voipextensions that are no longer referenced.
+ *   and need VoIP Extension to clean up any voipextensions that are no longer referenced.
  *
  * @param $criteria
  *   An array of instance criteria to save as.
@@ -183,7 +183,7 @@ function voipextension_save_voipextensions(&$voipextensions, $criteria) {
  *
  * This is the central function for saving a voipextension.
  * @param $voipextension
- *   Voip Extension array to save.
+ *   VoIP Extension array to save.
  * @param $cow
  *   Copy-on-write, i.e. whether or not to assign a new veid if something changes.
  * @param $criteria
@@ -257,7 +257,7 @@ function voipextension_save(&$voipextension, $cow = TRUE, $criteria = array()) {
 }
 
 /**
- * Save the voip directory information after saving the basic voipextension info
+ * Save the VoIP directory information after saving the basic voipextension info
  * @param $node
  *   A node object
  * @param $veid_array
@@ -323,11 +323,11 @@ function _voipextension_get_file_info($fid) {
 }
 
 /**
- * Find the voip extension id corresponding to the node id.
+ * Find the VoIP extension id corresponding to the node id.
  * @param $nid
  *   A node id.
  * @return
- *   An integer value having the voip extension number if found else NULL
+ *   An integer value having the VoIP extension number if found else NULL
  */
 function _voipextension_get_veid_from_nid($nid) {
   static $veid, $cached_nid;
@@ -342,9 +342,9 @@ function _voipextension_get_veid_from_nid($nid) {
 }
 
 /**
- * Find a node id associated with the voip extension id.
+ * Find a node id associated with the VoIP extension id.
  * @param $veid
- *   Voip Extension id.
+ *   VoIP Extension id.
  * @return
  *   An integer having the node id if found else NULL.
  */

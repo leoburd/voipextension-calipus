@@ -10,17 +10,17 @@
  */
 function voipextension_views_default_views() {
   $views = array();
-  
+
   $view = new view;
   $view->name = 'voipextensions';
-  $view->description = 'Voip Extensions List';
+  $view->description = 'VoIP Extensions List';
   $view->tag = '';
   $view->view_php = '';
   $view->base_table = 'voipextensions';
   $view->is_cacheable = FALSE;
   $view->api_version = 2;
   $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
-  $handler = $view->new_display('default', 'Voip Extensions', 'default');
+  $handler = $view->new_display('default', 'VoIP Extensions', 'default');
   $handler->override_option('fields', array(
     'nid' => array(
       'label' => 'Nid',
@@ -412,8 +412,8 @@ function voipextension_views_default_views() {
   $handler->override_option('cache', array(
     'type' => 'none',
   ));
-  $handler->override_option('title', 'Voip Extensions List');
-  $handler->override_option('empty', 'Sorry, no voip extensions created yet.');
+  $handler->override_option('title', 'VoIP Extensions List');
+  $handler->override_option('empty', 'Sorry, no VoIP extensions created yet.');
   $handler->override_option('empty_format', '2');
   $handler->override_option('use_ajax', TRUE);
   $handler->override_option('items_per_page', 20);
@@ -485,7 +485,7 @@ function voipextension_views_default_views() {
   $handler->override_option('path', 'voipextension/list');
   $handler->override_option('menu', array(
     'type' => 'normal',
-    'title' => 'Voip Extensions',
+    'title' => 'VoIP Extensions',
     'description' => '',
     'weight' => '0',
     'name' => 'navigation',

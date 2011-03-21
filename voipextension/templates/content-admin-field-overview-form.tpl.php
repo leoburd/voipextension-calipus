@@ -1,6 +1,3 @@
-<?php
-// $Id: content-admin-field-overview-form.tpl.php,v 1.1.2.6 2009/06/26 18:02:45 yched Exp $
-?>
 <div>
   <?php print $help; ?>
 </div>
@@ -19,10 +16,17 @@
     $count = 0;
     foreach ($rows as $row): ?>
     <?php
-    // ||  $row->group_name == VOIPEXTENSION_GROUP_FIELD_NAME
       if ($row->field_name == VOIPEXTENSION_EXTENSION_LISTED || $row->field_name == VOIPEXTENSION_AUDIO_NAME ||
           $row->field_name == VOIPEXTENSION_AUDIO_DESCRIPTION || $row->field_name == VOIPEXTENSION_AUDIO_GREETING) {
         continue 1;
+      }
+
+      if ($row->row_type == 'group' && isset($row->group_name) && $row->group_name == VOIPEXTENSION_GROUP_FIELD_NAME) {
+        $row->class = '';
+      }
+
+      if ($row->row_type == 'field' && $row->type == 'VoIP Extension') {
+        $row->class = 'tabledrag-leaf';
       }
     ?>
       <tr class="<?php print $count % 2 == 0 ? 'odd' : 'even'; ?> <?php print $row->class ?>">

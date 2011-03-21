@@ -1,16 +1,16 @@
 <?php
 /**
  * @file
- * 
- * This file handles all the operations to be performed on cck fields used in 
+ *
+ * This file handles all the operations to be performed on cck fields used in
  * the system. Some are helper functions and some are main functions.
- * 
+ *
  * These functions are only called when needed, so this file is loaded
  * dynamically.
  */
 
 /**
- * Delete all the fields created by voip extension module, including voip directory fields as well.
+ * Delete all the fields created by VoIP extension module, including VoIP directory fields as well.
  *
  * @todo Some bug is here, while deleting cck fields.
  */
@@ -56,7 +56,7 @@ function voipextension_change_fields_status($status) {
  * @param $node_type
  *   Having content type value
  * @return
- *   An array containing content type as key and voip extension field name as value
+ *   An array containing content type as key and VoIP extension field name as value
  */
 function _voipextension_get_content_type_voipextension_field($node_type = '') {
   $node_types = node_get_types();
@@ -100,7 +100,7 @@ function _voipextension_get_content_type_voipextension_field($node_type = '') {
 }
 
 /**
- * Delete the voip extension field from the selected content type.
+ * Delete the VoIP extension field from the selected content type.
  * @param $node_type
  *   String having content type value
  * @param string $field_name
@@ -268,7 +268,7 @@ function _voipextension_change_voipextension_group_status($node_type, $status = 
 }
 
 /**
- * Store and returns the voip directory field names.
+ * Store and returns the VoIP directory field names.
  * These are the standard field names and can't be changed.
  * @param $key
  *   The field name required.

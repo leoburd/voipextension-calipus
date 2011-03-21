@@ -2,7 +2,7 @@
 /**
  * @file
  *
- * forms hooks and alterations implemented by Voip Extension module.
+ * forms hooks and alterations implemented by VoIP Extension module.
  */
 
 /**
@@ -111,7 +111,7 @@ function voipextension_modify_profile_form($type, &$form, &$form_state) {
       $weight++;
     }
   }
-  
+
   module_load_include('inc', 'voipextension', 'includes/voipextension.api');
   $voip_extension = VoipExtension::getVoipExtensionFromUid($form['#uid']);
   if (!$voip_extension) {
@@ -157,7 +157,7 @@ function voipextension_user_modify_submit($form, &$form_state) {
 /**
  * Submit the user registration form.
  *
- * It checks that user is having permission of voip extension, if have then submit the content profile form also.
+ * It checks that user is having permission of VoIP extension, if have then submit the content profile form also.
  */
 function voipextension_user_register_submit($form, &$form_state) {
   $uid = $form_state['user']->uid;
@@ -180,7 +180,7 @@ function voipextension_content_field_overview_form_validate($form, &$form_state)
     $field_name = 'field_'. $form_state['clicked_button']['#post']['_add_new_field']['field_name'];
     module_load_include('inc', 'voipextension', 'includes/voipextension.field_operations');
     if (in_array($field_name, _voipextension_directory_field_names())) {
-      form_set_error('_add_new_field', t('Please choose some different field name. This is reserved to be used by voip extension module.'));
+      form_set_error('_add_new_field', t('Please choose some different field name. This is reserved to be used by VoIP extension module.'));
     }
   }
 
@@ -188,7 +188,7 @@ function voipextension_content_field_overview_form_validate($form, &$form_state)
       $form_state['clicked_button']['#post']['_add_new_group']['group_name'] != '') {
     $group_name = 'group_'. $form_state['clicked_button']['#post']['_add_new_group']['group_name'];
     if ($group_name == VOIPEXTENSION_GROUP_FIELD_NAME) {
-      form_set_error('_add_new_group', t('Please choose some different group name. This is reserved to be used by voip extension module.'));
+      form_set_error('_add_new_group', t('Please choose some different group name. This is reserved to be used by VoIP extension module.'));
     }
   }
 
@@ -199,14 +199,14 @@ function voipextension_content_field_overview_form_validate($form, &$form_state)
       $form_state['clicked_button']['#post']['_add_new_field']['type'] == 'voipextension' &&
       $form_state['clicked_button']['#post']['_add_new_field']['widget_type'] == 'voipextension') {
     if (_voipextension_check_cck_field_exists($form['#type_name'], 'voipextension', 'voipextension')) {
-      form_set_error('_add_new_field', t('Only one voip extension cck field can be added to one content type'));
+      form_set_error('_add_new_field', t('Only one VoIP extension cck field can be added to one content type'));
     }
   }
 }
 
 /**
  * Submit hook for content_field_overview form.
- * Create and setup the related or voip directory fields, if the current created field is voipextension field.
+ * Create and setup the related or VoIP directory fields, if the current created field is voipextension field.
  *
  * @param $form
  * @param $form_state
@@ -215,7 +215,7 @@ function voipextension_content_field_overview_form_submit($form, &$form_state) {
   if ((isset($form_state['clicked_button']['#post']['_add_existing_field']) && is_array($form_state['clicked_button']['#post']['_add_existing_field']) &&
       isset($form_state['clicked_button']['#post']['_add_existing_field']['widget_type']) &&
       $form_state['clicked_button']['#post']['_add_existing_field']['widget_type'] != '' &&
-      $form_state['clicked_button']['#post']['_add_existing_field']['widget_type'] == 'voipextension') || 
+      $form_state['clicked_button']['#post']['_add_existing_field']['widget_type'] == 'voipextension') ||
       (isset($form_state['clicked_button']['#post']['_add_new_field']) && is_array($form_state['clicked_button']['#post']['_add_new_field']) &&
       isset($form_state['clicked_button']['#post']['_add_new_field']['type']) && $form_state['clicked_button']['#post']['_add_new_field']['type'] != ''
       && isset($form_state['clicked_button']['#post']['_add_new_field']['widget_type']) &&
@@ -255,7 +255,7 @@ function voipextension_content_field_overview_form_submit($form, &$form_state) {
 /**
  * Submit hook of content_field_remove form.
  * If the current deleted field is a voipextension field then delete all the
- * related voip directory fields as well from the selcted content type.
+ * related VoIP directory fields as well from the selcted content type.
  * @param $form
  * @param $form_state
  */
@@ -281,7 +281,7 @@ function voipextension_content_field_remove_form_submit($form, &$form_state) {
 }
 
 /**
- * Remove or hide voip directory audio and status fields from other content types in the existing cck fields section.
+ * Remove or hide VoIP directory audio and status fields from other content types in the existing cck fields section.
  */
 function voipextension_content_field_overview_form_alter(&$form, &$form_state) {
   if (isset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_EXTENSION_LISTED])) {

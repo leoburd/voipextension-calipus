@@ -1,12 +1,12 @@
 <?php
 /**
  * @file
- * 
- * CCK field definitions of the voip directory fields.
+ *
+ * CCK field definitions of the VoIP directory fields.
  * This file contains the helper functions having cck field deinitions.
  * The voipextension module calls the function of this file to add/edit/delete
  * the custom cck fields
- * 
+ *
  */
 
 /**
@@ -18,7 +18,7 @@
  */
 function _voipextension_audio_group_defintion() {
   return array (
-    'label' => 'Voip Settings',
+    'label' => 'VoIP Settings',
     'group_type' => 'standard',
     'settings' =>
     array (
