@@ -22,8 +22,15 @@ function voipextension_install() {
 function voipextension_uninstall() {
   require_once dirname(__FILE__) . '/includes/voipextension.field_operations.inc';
   require_once dirname(__FILE__) . '/includes/voipextension.constants.inc';
+  require_once dirname(__FILE__) . '/includes/voipextension.helper.inc';
+  // Change the status to Active, because the uninstallation functions only
+  // works for active fields.
+  voipextension_change_fields_status(1);
+
   // Delete all the existing VoIP extension fields from all the content types
   voipextension_delete_fields();
+  
+  drupal_get_messages();
 
   drupal_uninstall_schema('voipextension');
   drupal_load('module', 'content');
@@ -33,6 +40,12 @@ function voipextension_uninstall() {
 
   variable_del('voipextension_script_name');
   variable_del('voipextension_status');
+  $node_types = node_get_types();
+  foreach ($node_types as $node_type => $node_type_info) {
+    variable_del('voip_extension_use_'. $node_type);
+    variable_del('default_script_name_'. $node_type);
+    variable_del('default_extension_status_'. $node_type);
+  }
 }
 
 /**
@@ -43,10 +56,17 @@ function voipextension_uninstall() {
 function voipextension_enable() {
   require_once dirname(__FILE__) . '/includes/voipextension.field_operations.inc';
   require_once dirname(__FILE__) . '/includes/voipextension.constants.inc';
+  require_once dirname(__FILE__) . '/includes/voipextension.helper.inc';
 
   drupal_load('module', 'content');
   content_notify('enable', 'voipextension');
+
   voipextension_change_fields_status(1);
+
+  $node_types = node_get_types();
+  foreach ($node_types as $node_type => $node_type_info) {
+    voipextension_update_extensions_status($node_type, 1);
+  }
 }
 
 /**
@@ -57,10 +77,16 @@ function voipextension_enable() {
 function voipextension_disable() {
   require_once dirname(__FILE__) . '/includes/voipextension.field_operations.inc';
   require_once dirname(__FILE__) . '/includes/voipextension.constants.inc';
+  require_once dirname(__FILE__) . '/includes/voipextension.helper.inc';
 
   drupal_load('module', 'content');
   content_notify('disable', 'voipextension');
   voipextension_change_fields_status(0);
+
+  $node_types = node_get_types();
+  foreach ($node_types as $node_type => $node_type_info) {
+    voipextension_update_extensions_status($node_type, 0);
+  }
 }
 
 /**
@@ -128,6 +154,14 @@ function voipextension_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0,
+      ),
+      'status' => array(
+        'description' => t('VoIP Extension status (Available in front display or not)'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 1,
       ),
     ),
     'primary key' => array('veid'),

@@ -2,7 +2,7 @@
 /**
  * @file
  *
- * Installation hooks and the instructions for the voip voice mail module.
+ * Installation hooks and the instructions for the VoIP Voice Mail Module.
  */
 
 /**
@@ -18,6 +18,20 @@ function voicemail_install() {
  * Implementation of hook_uninstall().
  */
 function voicemail_uninstall() {
+  require_once dirname(__FILE__) . '/includes/voicemail.constants.inc';
+  require_once dirname(__FILE__) . '/includes/voicemail.field_operations.inc';
+
+  voicemail_change_fields_status(1);
+
+  // Delete all the existing Voicemail fields from all the content types
+  voicemail_delete_fields();
+  drupal_get_messages();
+
+  $node_types = node_get_types();
+  foreach ($node_types as $node_type => $node_type_info) {
+    variable_del('voip_voicemail_use_'. $node_type);
+  }
+
   drupal_uninstall_schema('voicemail');
   drupal_load('module', 'content');
   content_notify('uninstall', 'voicemail');
@@ -29,6 +43,11 @@ function voicemail_uninstall() {
 function voicemail_enable() {
   drupal_load('module', 'content');
   content_notify('enable', 'voicemail');
+
+  require_once dirname(__FILE__) . '/includes/voicemail.constants.inc';
+  require_once dirname(__FILE__) . '/includes/voicemail.field_operations.inc';
+
+  voicemail_change_fields_status(1);
 }
 
 /**
@@ -37,6 +56,11 @@ function voicemail_enable() {
 function voicemail_disable() {
   drupal_load('module', 'content');
   content_notify('disable', 'voicemail');
+
+  require_once dirname(__FILE__) . '/includes/voicemail.constants.inc';
+  require_once dirname(__FILE__) . '/includes/voicemail.field_operations.inc';
+
+  voicemail_change_fields_status(0);
 }
 
 /**
@@ -48,7 +72,7 @@ function voicemail_schema() {
     'description' => t('Contains voicemail box settings'),
     'fields' => array(
       'veid' => array(
-        'description' => t('Voip Extension id: Reference to {voipextensions}.veid.'),
+        'description' => t('VoIP Extension id: Reference to {voipextensions}.veid.'),
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
@@ -76,38 +100,24 @@ function voicemail_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'status' => array(
+        'description' => t('Whether to show in the listing or not, if VoIP Extension/Voicemail module gets disabled then we needs to disable this also'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
     ),
     'unique keys' => array(
       'veid' => array('veid')
     ),
   );
 
-  $schema['voicemail_messages'] = array(
-    'description' => t('Store voicemail messages.'),
-    'fields' => array(
-      'mid' => array(
-        'description' => t('Primary key: Auto incremented key'),
-        'type' => 'serial',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ),
-      'audio_message_fid' => array(
-        'description' => t('Audio Message: Reference to {files}.fid.'),
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ),
-    ),
-    'primary key' => array('mid'),
-    'unique keys' => array(
-      'audio_message_fid' => array('audio_message_fid')
-    ),
-  );
-
-  $schema['voicemail_outbox'] = array(
+  $schema['voicemail_sent'] = array(
     'description' => t('Voicemail sent messages'),
     'fields' => array(
-      'id' => array(
+      'mid' => array(
         'description' => t('Primary auto incremented key'),
         'type' => 'serial',
         'unsigned' => TRUE,
@@ -119,10 +129,22 @@ function voicemail_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      'mid' => array(
-        'description' => t('Message id: Reference to {voicemail_messages}.mid.'),
+      'audio_message_fid' => array(
+        'description' => t('Audio Message: Reference to {files}.fid.'),
         'type' => 'int',
         'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'caller_name' => array(
+        'description' => t('Name of the person who sent this message.'),
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'caller_number' => array(
+        'description' => t('Phone number of the sender'),
+        'type' => 'varchar',
+        'length' => '15',
         'not null' => TRUE,
       ),
       'sent_on' => array(
@@ -132,7 +154,7 @@ function voicemail_schema() {
         'not null' => TRUE,
       ),
     ),
-    'primary key' => array('id'),
+    'primary key' => array('mid'),
   );
 
   $schema['voicemail_inbox'] = array(
@@ -151,21 +173,9 @@ function voicemail_schema() {
         'not null' => TRUE,
       ),
       'mid' => array(
-        'description' => t('Message id: Reference to {voicemail_messages}.mid.'),
+        'description' => t('Message id: Reference to {voicemail_outbox}.mid.'),
         'type' => 'int',
         'unsigned' => TRUE,
-        'not null' => TRUE,
-      ),
-      'caller_name' => array(
-        'description' => t('Name of the person who sent this message.'),
-        'type' => 'varchar',
-        'length' => '255',
-        'not null' => TRUE,
-      ),
-      'caller_number' => array(
-        'description' => t('Phone number of the sender'),
-        'type' => 'varchar',
-        'length' => '15',
         'not null' => TRUE,
       ),
       'is_new' => array(

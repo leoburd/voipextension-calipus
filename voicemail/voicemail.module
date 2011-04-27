@@ -1,18 +1,95 @@
 <?php
-
-define('VOICEMAIL_HAVE_MAILBOX_ACCESS', 'have voice mail box');
-define('VOICEMAIL_ADMINISTER_MAILBOX', 'administer voice mail box');
-
-module_load_include('inc', 'voicemail', 'includes/voicemail.form');
-module_load_include('inc', 'voicemail', 'includes/voicemail.helper');
-module_load_include('inc', 'voicemail', 'includes/voicemail.widget');
-module_load_include('inc', 'voicemail', 'includes/voicemail.widget');
-module_load_include('inc', 'voicemail', 'includes/voipextension.field_operations');
+/**
+ * @file
+ *
+ * Voicemail Module Callbacks and Manipulation
+ */
 
 /**
- * Implementation of hook_init().
+ * Load the required libraries at the startup of the module.
  */
-function voicemail_init() {
+module_load_include('inc', 'voicemail', 'includes/voicemail.constants');
+module_load_include('inc', 'voicemail', 'includes/voicemail.cck_fields');
+module_load_include('inc', 'voicemail', 'includes/voicemail.field_operations');
+module_load_include('inc', 'voicemail', 'includes/voicemail.form');
+
+/**
+ * Implementation of hook_menu().
+ */
+function voicemail_menu() {
+  $items = array();
+
+  $items['user/%user/voicemail/sent'] = array(
+    'title' => 'Voicemail Sent',
+    'page callback' => 'voicemail_user_voicemail_sent',
+    'access callback' => 'voicemail_views_user_access',
+    'access arguments' => array(VOICEMAIL_HAVE_MAILBOX_ACCESS),
+    'type' => MENU_LOCAL_TASK
+  );
+
+  $items['user/%user/voicemail/received'] = array(
+    'title' => 'Voicemail Received',
+    'page callback' => 'voicemail_user_voicemail_received',
+    'access callback' => 'voicemail_views_user_access',
+    'access arguments' => array(VOICEMAIL_HAVE_MAILBOX_ACCESS),
+    'type' => MENU_LOCAL_TASK
+  );
+
+  $items['node/%node/voicemail/sent'] = array(
+    'title' => 'Voicemail Sent',
+    'page callback' => 'voicemail_node_voicemail_sent',
+    'access callback' => 'voicemail_views_node_access',
+    'access arguments' => array(VOICEMAIL_HAVE_MAILBOX_ACCESS),
+    'type' => MENU_LOCAL_TASK
+  );
+
+  $items['node/%node/voicemail/received'] = array(
+    'title' => 'Voicemail Received',
+    'page callback' => 'voicemail_node_voicemail_received',
+    'access callback' => 'voicemail_views_node_access',
+    'access arguments' => array(VOICEMAIL_HAVE_MAILBOX_ACCESS),
+    'type' => MENU_LOCAL_TASK
+  );
+
+  return $items;
+}
+
+/**
+ * Access callback for Voicmail implemented views for Users.
+ * @return
+ *   Boolean TRUE if authorized else FALSE
+ */
+function voicemail_views_user_access($string, $account = NULL, $reset = FALSE) {
+  $uid = arg(1);
+  module_load_include('inc', 'voipextension', 'includes/voipextension.api');
+  $voipextension = VoipExtension::getVoipExtensionFromUid($uid);
+
+  if (isset($voipextension->veid) && $voipextension->veid > 0) {
+    $node = $voipextension->node;
+    if (variable_get('voip_voicemail_use_'. $node->type, FALSE)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+
+/**
+ * Access callback for Voicmail implemented views for Users.
+ * @return
+ *   Boolean TRUE if authorized else FALSE
+ */
+function voicemail_views_node_access($string, $account = NULL, $reset = FALSE) {
+  $nid = arg(1);
+  module_load_include('inc', 'voipextension', 'includes/voipextension.api');
+  $voipextension = VoipExtension::getVoipExtensionFromNid($nid);
+  if (isset($voipextension->veid) && $voipextension->veid > 0) {
+    $node = $voipextension->node;
+    if (variable_get('voip_voicemail_use_'. $node->type, FALSE)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
 }
 
 /**
@@ -23,86 +100,115 @@ function voicemail_perm() {
 }
 
 /**
- * Implementation of hook_elements().
+ * Implementation of hook_menu_alter().
+ *
+ * Remove the unnecessary links from the secondary tab.
  */
-function voicemail_elements() {
-  $elements = array();
-  $filefield_elements = filefield_elements();
-  $elements['voicemail_widget'] = $filefield_elements['filefield_widget'];
+function voicemail_menu_alter(&$items) {
+  $node_types = node_get_types();
+  foreach ($node_types as $node_type => $node_type_details) {
+    if (isset($items['admin/content/node-type/'.$node_type.'/fields/'. VOICEMAIL_AUDIO_FIELD_NAME])) {
+      $items['admin/content/node-type/'.$node_type.'/fields/'.VOICEMAIL_AUDIO_FIELD_NAME]['access callback'] = 'voicemail_access';
+    }
 
-  //Process callback
-  $elements['voicemail_widget']['#process'][] = 'voicemail_widget_process';
-  $elements['voicemail_widget']['#value_callback'] = 'voicemail_widget_value';
-  return $elements;
-}
-
-/**
- * Implementation of hook_theme().
- */
-function voicemail_theme() {
-  return array(
-      'voicemail_widget' => array(
-        'arguments' => array('element' => NULL),
-        'file' => 'includes/voicemail.widget.inc',
-      ),
-  );
-}
-
-/**
- * Implementation of hook_widget_info().
- */
-function voicemail_widget_info() {
-  return array(
-    'voicemail_widget' => array(
-      'label' => t('Voip mailbox'),
-      'field types' => array('filefield'),
-      'multiple values' => CONTENT_HANDLE_CORE,
-      'callbacks' => array('default value' => CONTENT_CALLBACK_CUSTOM),
-      'description' => t('Widget for handling voicemailbox data.'),
-    ),
-  );
-}
-
-/**
- * Implementation of hook_widget_settings().
- */
-function voicemail_widget_settings($op, $widget) {
-  switch ($op) {
-    case 'form':
-      return voicemail_widget_settings_form($widget);
-    case 'save':
-      return voicemail_widget_settings_save($widget);
+    if (isset($items['admin/content/node-type/'.$node_type.'/fields/'. VOICEMAIL_STATUS_FIELD_NAME])) {
+      $items['admin/content/node-type/'.$node_type.'/fields/'. VOICEMAIL_STATUS_FIELD_NAME]['access callback'] = 'voicemail_access';
+    }
   }
 }
 
 /**
- * Implementation of hook_widget().
+ * Access callback for VoiceMail CCK fields.
  *
- * Assign default properties to item and delegate to audiorecorderfield.
+ * @param $string
+ *   Permission for that field
+ * @param $account
+ *   Account to be used during permission check.
+ * @param $reset
+ *   To reset the cache, but we are not using it..........
  */
-function voicemail_widget(&$form, &$form_state, $field, $items, $delta = 0) {
-  $element = filefield_widget($form, $form_state, $field, $items, $delta);
-  return $element;
+function voicemail_access($string, $account = NULL, $reset = FALSE) {
+  $fields_array = array(
+    VOICEMAIL_AUDIO_FIELD_NAME,
+    VOICEMAIL_STATUS_FIELD_NAME,
+  );
+
+  if (arg(0) == 'admin' && in_array(arg(5), $fields_array)) {
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
 }
 
 /**
- * Implementation of CCK's hook_default_value().
+ * Implementation of hook_views_api().
  */
-function voicemail_default_value(&$form, &$form_state, $field, $delta) {
-  return filefield_default_value($form, $form_state, $field, $delta);
+function voicemail_views_api() {
+  return array(
+    'api' => 2,
+    'path' => drupal_get_path('module', 'voicemail') .'/views',
+  );
 }
 
 /**
  * Implementation of hook_form_alter().
- *
- * Alter the manage fields form of cck to add some custom validations.
  */
 function voicemail_form_alter(&$form, &$form_state, $form_id) {
+  // Set pre render callback for all the node forms.
+  $node_types = node_get_types();
+  foreach ($node_types as $node_type => $node_type_details) {
+    if ($form_id == $node_type .'_node_form') {
+      if (isset($form['#pre_render']) && is_array($form['#pre_render'])) {
+        $form['#pre_render'][] = 'voicemail_node_type_form_pre_render';
+      }
+      else {
+        $form['#pre_render'] = array();
+        $form['#pre_render'][] = 'voicemail_node_type_form_pre_render';
+      }
+    }
+  }
+
   switch ($form_id) {
-    case 'content_field_overview_form':
-      $form['#validate'][] = 'voicemail_form_content_field_overview_validate';
-      $form['#submit'][]   = 'voicemail_form_content_field_overview_submit';
+    case 'node_type_form':
+      voicemail_node_type_form_alter($form, $form_state);
       break;
+    case 'content_field_overview_form':
+      $form['#validate'][] = 'voicemail_content_field_overview_form_validate';
+      break;
+    case 'content_display_overview_form':
+      break;
+    case 'user_profile_form':
+    case 'user_register':
+      if (isset($form['#pre_render']) && is_array($form['#pre_render'])) {
+        $form['#pre_render'][] = 'voicemail_node_type_form_pre_render';
+      }
+      else {
+        $form['#pre_render'] = array();
+        $form['#pre_render'][] = 'voicemail_node_type_form_pre_render';
+      }
+      break;
+  }
+}
+
+/**
+ * Preprocess content field overview (Manage Fields) form.
+ * @param $variables
+ *   An array having all the data required to send to the html template
+ */
+function voicemail_preprocess_content_field_overview_form(&$variables) {
+  $escape_fields_array = array(
+    VOICEMAIL_AUDIO_FIELD_NAME,
+    VOICEMAIL_STATUS_FIELD_NAME
+  );
+  foreach ($variables['rows'] as $index => $row) {
+    if (in_array($row->field_name, $escape_fields_array)) {
+      unset($variables['rows'][$index]);
+    }
+
+    if ($row->row_type == 'group' && isset($row->group_name) && $row->group_name == VOICEMAIL_GROUP_FIELD_NAME) {
+      unset($variables['rows'][$index]);
+    }
   }
 }
 
@@ -110,121 +216,206 @@ function voicemail_form_alter(&$form, &$form_state, $form_id) {
  * Implementation of hook_nodeapi().
  */
 function voicemail_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
-/**
-  $file = './'. drupal_get_path('module', 'voicemail') ."/includes/voicemail.nodeapi.inc";
-  if (is_file($file)) {
-    require $file;
+  if (variable_get('voip_voicemail_use_'. $node->type, FALSE)) {
+    module_load_include('inc', 'voicemail', 'includes/voicemail.helper');
+    $file = './'. drupal_get_path('module', 'voicemail') ."/includes/voicemail.nodeapi.inc";
+    if (is_file($file)) {
+      require $file;
+    }
   }
-****/
+}
+
 /**
- * @file
+ * Pre render callback for the node type forms.
+ * Set the weight of the voicemail field to display Voicemail field below the
+ * VoIP Extension and VoIP directory fields.
  *
- * hook_nodeapi() implementation.
- * This file is only loaded when required by hook_nodeapi().
+ * @param $form
+ *   An array having FAPI
+ * @return
+ *   A FAPI
+ */
+function voicemail_node_type_form_pre_render($form) {
+  if (isset($form[VOICEMAIL_GROUP_FIELD_NAME]['#weight']) && isset($form[VOIPEXTENSION_VOIPDIRECTORY_GROUP_FIELD_NAME]['#weight'])) {
+    $form[VOICEMAIL_GROUP_FIELD_NAME]['#weight'] = $form[VOIPEXTENSION_VOIPDIRECTORY_GROUP_FIELD_NAME]['#weight'] + 0.1;
+  }
+  return $form;
+}
+
+/**
+ * Dynamically render a view by passing arguments, In voicemail view we need
+ * pass VoIP Extension associated with node/user.
+ *
+ * @return
+ *   Themeable output of the sent voicemails view.
+ */
+function voicemail_user_voicemail_sent() {
+  $uid = arg(1);
+  module_load_include('inc', 'voipextension', 'includes/voipextension.api');
+  $voipextension = VoipExtension::getVoipExtensionFromUid($uid);
+  if (isset($voipextension->veid) && $voipextension->veid > 0) {
+    $args = array($voipextension->veid);
+    return _voicemail_render_view('voicemail_sent_messages', $args);
+  }
+  else {
+    return t('Sorry No data found');
+  }
+}
+
+/**
+ * Dynamically render the received voicemails view by passing arguments, In
+ * voicemail view we need pass VoIP Extension associated with node/user.
+ *
+ * @return
+ *   Themeable output of the sent voicemails view.
  */
 
-switch ($op) {
-  // the $node->content array has been rendered, so the node body or teaser is filtered and now contains HTML. This op should only be
-  // used when text substitution, filtering, or other raw text operations are necessary.
-  case 'alter':
-    break;
-  // The node is being deleted.
-  case 'delete':
-    break;
-  // The revision of the node is deleted. You can delete data associated with that revision.
-  case 'delete revision':
-    break;
-  // The node has just been created (inserted in the database).
-  case 'insert':
-  // The node has just been updated in the database.
-  case 'update':
-    // If the current node is having the feature of voicemail box.
-    $voicemail_field = _voicemail_get_content_type_voicemail_field($node->type);
-    $voicemail_field = $voicemail_field[$node->type];
-    if (isset($node->$voicemail_field)) {
-      module_load_include('inc', 'voipextension', 'includes/voipextension.field_operations');
-      $voipextension_field = _voipextension_get_content_type_voipextension_field($node->type);
-      $voipextension_field = $voipextension_field[$node->type];
-      if (isset($node->$voipextension_field)) {
-        $voicemailbox = array();
-        $voipextension_field_array = $node->$voipextension_field;
-        $voicemail_field_array = $node->$voicemail_field;
-        if (isset($voipextension_field_array[0]['veid']) && $voipextension_field_array[0]['veid'] != '') {
-          $voicemailbox['veid'] = $voipextension_field_array[0]['veid'];
-        }
-        if (isset($voicemail_field_array[0]['voicemail_status'])) {
-          $voicemailbox['is_enabled'] = $voicemail_field_array[0]['voicemail_status'];
-        }
-        if (isset($voicemail_field_array[0]['fid'])) {
-          $voicemailbox['audio_greetings_fid'] = $voicemail_field_array[0]['fid'];
+function voicemail_user_voicemail_received() {
+  $uid = arg(1);
+  module_load_include('inc', 'voipextension', 'includes/voipextension.api');
+  $voipextension = VoipExtension::getVoipExtensionFromUid($uid);
+  if (isset($voipextension->veid) && $voipextension->veid > 0) {
+    $args = array($voipextension->veid);
+    return _voicemail_render_view('voicemail_received_messages', $args);
+  }
+  else {
+    return t('Sorry No data found');
+  }
+}
+
+/**
+ * Renders a Node voicemail sent view., Pass the VoIP Extension as an argument.
+ * @return
+ *   HTML ourput of the rendered view
+ */
+function voicemail_node_voicemail_sent() {
+  $nid = arg(1);
+  module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
+  $veid = _voipextension_get_veid_from_nid($nid);
+  if (isset($veid) && $veid > 0) {
+    $args = array($veid);
+    return _voicemail_render_view('voicemail_sent_messages', $args);
+  }
+  else {
+    return t('Sorry No data found');
+  }
+}
+
+/**
+ * Renders the list of voicemails received for a node.
+ * @return
+ *   Themeable HTML output
+ */
+function voicemail_node_voicemail_received() {
+  $nid = arg(1);
+  module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
+  $veid = _voipextension_get_veid_from_nid($nid);
+  if (isset($veid) && $veid > 0) {
+    $args = array($veid);
+    return _voicemail_render_view('voicemail_received_messages', $args);
+  }
+  else {
+    return t('Sorry No data found');
+  }
+}
+
+/**
+ * Implementation of hook_views_pre_render().
+ *
+ * Format the fields exposed by voicemail custom views.
+ * Add audio players and formats the status labels
+ *
+ * @param $view
+ *   An object of the current view going to be rendered
+ */
+function voicemail_views_pre_render(&$view) {
+  module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
+  switch ($view->name) {
+    case 'voicemail_sent_messages':
+      foreach ($view->result as $index => $view_field) {
+        if (isset($view_field->voicemail_sent_sent_on)) {
+          $view->result[$index]->voicemail_sent_sent_on = date('F d, Y h:i A', $view_field->voicemail_sent_sent_on);
         }
 
-        if (isset($voicemailbox['veid']) && $voicemailbox['veid'] != '') {
-          voicemail_save($voicemailbox);
+        if (isset($view_field->voicemail_sent_audio_message_fid)) {
+          $file = _voipextension_get_file_info($view_field->voicemail_sent_audio_message_fid);
+          $view->result[$index]->voicemail_sent_audio_message_fid = theme('voipextension_audio_player', $file);
         }
       }
-    }
-    break;
-  // The node is about to be loaded from the database. This hook can be used to load additional data at this time.
-  case 'load':
-    break;
-  // The node is about to be shown on the add/edit form.
-  case 'prepare':
-    break;
-  // The node is being cloned for translation. Load additional data or copy values from $node->translation_source.
-  case 'prepare translation':
-    break;
-  // # Prepare a node view for printing. Used for printer-friendly view in book_module # "rss item": An RSS feed is generated. The module
-  // can return properties to be added to the RSS item generated for this node. See comment_nodeapi() and upload_nodeapi() for examples.
-  // The $node passed can also be modified to add or remove contents to the feed item.
-  case 'print':
-    break;
-  // The node is displayed as a search result. If you want to display extra information with the result, return it.
-  case 'rss item':
-    break;
-  // The node passed validation and is about to be saved. Modules may use this to make changes to the node before it is saved to the
-  // database.
-  case 'search result':
-    break;
-  // The node passed validation and is about to be saved. Modules may use this to make changes to the node before it is saved to the database.
-  case 'presave':
-    break;
-  // The node is being indexed. If you want additional information to be indexed which is not already visible through nodeapi "view",
-  // then you should return it here.
-  case 'update index':
-    break;
-  // The user has just finished editing the node and is trying to preview or submit it. This hook can be used to check the node data.
-  // Errors should be set with form_set_error().
-  case 'validate':
-    break;
-  // The node content is being assembled before rendering. The module may add elements $node->content prior to rendering. This hook will
-  // be called after hook_view(). The format of $node->content is the same as used by Forms API.
-  case 'view':
-    $voicemail_field = _voicemail_get_content_type_voicemail_field($node->type);
-    $voicemail_field = $voicemail_field[$node->type];
-    if (isset($node->content[$voicemail_field])) {
-      module_load_include('inc', 'voipextension', 'includes/voipextension.field_operations');
-      $voipextension_field = _voipextension_get_content_type_voipextension_field($node->type);
-      $voipextension_field = $voipextension_field[$node->type];
-      if (isset($node->$voipextension_field)) {
-        $voipextension_field_array = $node->$voipextension_field;
-        if (isset($voipextension_field_array[0]['veid'])) {
-          $voicemailbox = voicemail_load_settings($voipextension_field_array[0]['veid']);
-          if (isset($voicemailbox->veid)) {
-            if ($voicemailbox->is_enabled) {
-              $voicemail_status = t('Enabled');
-            }
-            else {
-              $voicemail_status = t('Disabled');
-            }
-            $node->content['voicemail_status'] = array(
-                  '#value' => t('<b>Voicemail Status:</b> %voicemail_status', array('%voicemail_status' => $voicemail_status)),
-                  '#weight' => $node->content[$voicemail_field]['#weight'] + 1
-                );
+      break;
+    case 'voicemail_received_messages':
+      foreach ($view->result as $index => $view_field) {
+        if (isset($view_field->voicemail_inbox_received_on)) {
+          $view->result[$index]->voicemail_inbox_received_on = date('F d, Y h:i A', $view_field->voicemail_inbox_received_on);
+        }
+
+        if (isset($view_field->voicemail_inbox_is_new)) {
+          if ($view_field->voicemail_inbox_is_new == 1) {
+            $view->result[$index]->voicemail_inbox_is_new = t('New');
+          }
+          else {
+            $view->result[$index]->voicemail_inbox_is_new = t('Read');
           }
         }
+
+        if (isset($view_field->voicemail_sent_audio_message_fid)) {
+          $file = _voipextension_get_file_info($view_field->voicemail_sent_audio_message_fid);
+          $view->result[$index]->voicemail_sent_audio_message_fid = theme('voipextension_audio_player', $file);
+        }
+
       }
-    }
-    break;
+      break;
+  }
 }
+
+
+/**
+ * Implementation of hook_views_post_render().
+ *
+ * Convert the non html content to html.
+ * @param $view
+ *   An object of view.
+ * @param $output
+ *   Themed output of view.
+ * @param $cache
+ */
+function voicemail_views_post_render(&$view, &$output, &$cache) {
+  switch ($view->name) {
+    case 'voicemail_sent_messages':
+      foreach ($view->result as $index => $view_field) {
+        if (isset($view_field->voicemail_sent_audio_message_fid)) {
+          $view->result[$index]->voicemail_sent_audio_message_fid = html_entity_decode($view->result[$index]->voicemail_sent_audio_message_fid);
+        }
+
+        $output = html_entity_decode($output);
+      }
+      break;
+    case 'voicemail_received_messages':
+      foreach ($view->result as $index => $view_field) {
+        if (isset($view_field->voicemail_sent_audio_message_fid)) {
+          $view->result[$index]->voicemail_sent_audio_message_fid = html_entity_decode($view->result[$index]->voicemail_sent_audio_message_fid);
+        }
+
+        $output = html_entity_decode($output);
+      }
+      break;
+  }
+}
+
+/**
+ * Helper function to render a view.
+ * @param $view_name
+ *   Machine name of the view to be rendered
+ * @param $args
+ *   An array of arguments that needs to be passed to the view.
+ * @return
+ *   HTML Output
+ */
+function _voicemail_render_view($view_name, $args = array()) {
+  $output = '';
+  $view = views_get_view($view_name);
+  $view->set_arguments($args);
+  $output = $view->render('default');
+  $view->destroy();
+  return $output;
 }

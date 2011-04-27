@@ -186,6 +186,24 @@ function voipextension_views_data() {
     ),
   );
 
+  $data['voipextensions']['status'] = array(
+    'title' => t('Status (Enabled/Disabled)'),
+    'help' => t('VoIP extension to be shown at front end or not.'),
+    'field' => array(
+      'handler' => 'views_handler_field',
+      'click sortable' => TRUE,
+    ),
+    'filter' => array(
+      'handler' => 'views_handler_filter_numeric',
+    ),
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
+    'argument' => array(
+      'handler' => 'views_handler_argument_numeric',
+    ),
+  );
+
   $data['voipextensions_instance']['table']['group']  = t('VoIP Extension');
 
   $data['voipextensions_instance']['table']['join'] = array(

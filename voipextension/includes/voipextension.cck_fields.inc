@@ -10,15 +10,165 @@
  */
 
 /**
+ * VoIP Extension CCK Field
+ * @param $node_type
+ * @return
+ *   An array having cck definition of the voip extension.
+ */
+function _voipextension_main_field_definition($node_type) {
+  $default_script_name = variable_get('default_script_name_'. $node_type, variable_get('voipextension_script_name', ''));
+  $default_extension_status = variable_get('default_extension_status_'. $node_type, variable_get('voipextension_status', 0));
+
+  return array (
+    'field_name' => VOIPEXTENSION_EXTENSION_MAIN_FIELD,
+    'type_name' => $node_type,
+    'display_settings' =>
+    array (
+      'label' =>
+      array (
+        'format' => 'above',
+        'exclude' => 0,
+      ),
+      'teaser' =>
+      array (
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      'full' =>
+      array (
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      4 =>
+      array (
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+      'token' =>
+      array (
+        'format' => 'default',
+        'exclude' => 0,
+      ),
+    ),
+    'widget_active' => '1',
+    'type' => 'voipextension',
+    'required' => '0',
+    'multiple' => '0',
+    'db_storage' => '1',
+    'module' => 'voipextension',
+    'active' => '1',
+    'locked' => '0',
+    'columns' =>
+    array (
+      'veid' =>
+      array (
+        'type' => 'int',
+        'unsigned' => true,
+        'not null' => false,
+      ),
+    ),
+    'veid' => '',
+    'widget' =>
+    array (
+      'default_value' =>
+      array (
+        0 =>
+        array (
+          'script_name' => $default_script_name,
+          'extension_status' => $default_extension_status,
+          'cck_preview_in_progress' => true,
+          'voipextension_settings' =>
+          array (
+            'form' =>
+            array (
+              'fields' =>
+              array (
+                'script_name' =>
+                array (
+                  'default' => $default_script_name,
+                  'collect' => 1,
+                  'weight' => 4,
+                ),
+                'extension_status' =>
+                array (
+                  'default' => $default_extension_status,
+                  'collect' => 1,
+                  'weight' => 5,
+                ),
+                'cck_preview_in_progress' =>
+                array (
+                  'default' => true,
+                ),
+                'voipextension_settings' =>
+                array (
+                  'default' =>
+                  array (
+                    'form' =>
+                    array (
+                      'fields' =>
+                      array (
+                        'veid' =>
+                        array (
+                          'default' => false,
+                        ),
+                        'extension_name' =>
+                        array (
+                          'default' => 'Extension Name',
+                          'collect' => 1,
+                          'weight' => 2,
+                        ),
+                        'script_name' =>
+                        array (
+                          'default' => $default_script_name,
+                          'collect' => 1,
+                          'weight' => 4,
+                        ),
+                        'extension_status' =>
+                        array (
+                          'default' => $default_extension_status,
+                          'collect' => 1,
+                          'weight' => 5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                'extension_name' =>
+                array (
+                  'default' => 'Extension Name',
+                  'collect' => 1,
+                  'weight' => 2,
+                ),
+                'veid' =>
+                array (
+                  'default' => false,
+                ),
+              ),
+            ),
+          ),
+          'extension_name' => 'Extension Name',
+        ),
+      ),
+      'default_value_php' => NULL,
+      'label' => 'VoIP Settings',
+      'weight' => '3',
+      'description' => '',
+      'type' => 'voipextension',
+      'module' => 'voipextension',
+    ),
+  );
+}
+
+/**
  * Contains the fieldgroup cck field structure.
  * This is the exported form of cck field.
  *
  * @return
  *   An array having fielgroup cck structure.
  */
-function _voipextension_audio_group_defintion() {
+function _voipextension_extension_group_defintion() {
   return array (
-    'label' => 'VoIP Settings',
+    'label' => 'VoIP Extension Settings',
     'group_type' => 'standard',
     'settings' =>
     array (
@@ -55,6 +205,54 @@ function _voipextension_audio_group_defintion() {
     ),
     'weight' => '7',
     'group_name' => VOIPEXTENSION_GROUP_FIELD_NAME,
+  );
+}
+
+/**
+ * VoIP Directory fields will be enclosed under this group.
+ *
+ * @return
+ *   An array of the cck fieldgroup representation.
+ */
+function _voipextension_voipdirectory_settings_group() {
+  return array (
+    'label' => 'VoIP Directory Settings',
+    'group_type' => 'standard',
+    'settings' =>
+    array (
+      'form' =>
+      array (
+        'style' => 'fieldset_collapsible',
+        'description' => '',
+      ),
+      'display' =>
+      array (
+        'description' => '',
+        'teaser' =>
+        array (
+          'format' => 'fieldset',
+          'exclude' => 0,
+        ),
+        'full' =>
+        array (
+          'format' => 'fieldset',
+          'exclude' => 0,
+        ),
+        4 =>
+        array (
+          'format' => 'fieldset',
+          'exclude' => 0,
+        ),
+        'token' =>
+        array (
+          'format' => 'fieldset',
+          'exclude' => 0,
+        ),
+        'label' => 'above',
+      ),
+    ),
+    'weight' => '13',
+    'group_name' => VOIPEXTENSION_VOIPDIRECTORY_GROUP_FIELD_NAME
   );
 }
 

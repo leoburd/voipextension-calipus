@@ -14,15 +14,6 @@ module_load_include('inc', 'voipextension', 'includes/voipextension.form');
 
 
 /**
- * Implementation of hook_init().
- *
- * Setup tasks at the initialization of the module.
- */
-function voipextension_init() {
-
-}
-
-/**
  * Implementation of hook_menu().
  *
  * Define menu items and page callbacks.
@@ -36,6 +27,15 @@ function voipextension_menu() {
     'access arguments' => array(VOIPEXTENSION_ADMINISTER_EXTENSIONS),
     'file' => 'includes/voipextension.admin.inc',
   );
+
+  $items['admin/content/voip/manage-extensions'] = array(
+    'title' => t('Manage VoIP Extensions'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('voipextension_manage_extensions'),
+    'access callback' => 'user_access',
+    'access arguments' => array(VOIPEXTENSION_ADMINISTER_EXTENSIONS),
+    'file' => 'includes/voipextension.admin.inc'
+  );
   return $items;
 }
 
@@ -47,21 +47,52 @@ function voipextension_menu() {
 function voipextension_menu_alter(&$items) {
   $node_types = node_get_types();
   foreach ($node_types as $node_type => $node_type_details) {
+    if (isset($items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_EXTENSION_MAIN_FIELD])) {
+      $items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_EXTENSION_MAIN_FIELD]['access callback'] = 'voipextension_access';
+    }
+
     if (isset($items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_EXTENSION_LISTED])) {
-      $items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_EXTENSION_LISTED]['access callback'] = FALSE;
+      $items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_EXTENSION_LISTED]['access callback'] = 'voipextension_access';
     }
 
     if (isset($items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_NAME])) {
-      $items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_NAME]['access callback'] = FALSE;
+      $items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_NAME]['access callback'] = 'voipextension_access';
     }
 
     if (isset($items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_DESCRIPTION])) {
-      $items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_DESCRIPTION]['access callback'] = FALSE;
+      $items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_DESCRIPTION]['access callback'] = 'voipextension_access';
     }
 
     if (isset($items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_GREETING])) {
-      $items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_GREETING]['access callback'] = FALSE;
+      $items['admin/content/node-type/'.$node_type.'/fields/'.VOIPEXTENSION_AUDIO_GREETING]['access callback'] = 'voipextension_access';
     }
+  }
+}
+
+/**
+ * Access callback for VoIPExtension CCK fields.
+ *
+ * @param $string
+ *   Permission for that field
+ * @param $account
+ *   Account to be used during permission check.
+ * @param $reset
+ *   To reset the cache, but we are not using it..........
+ */
+function voipextension_access($string, $account = NULL, $reset = FALSE) {
+  $fields_array = array(
+//    VOIPEXTENSION_EXTENSION_MAIN_FIELD,
+    VOIPEXTENSION_EXTENSION_LISTED,
+    VOIPEXTENSION_AUDIO_NAME,
+    VOIPEXTENSION_AUDIO_DESCRIPTION,
+    VOIPEXTENSION_AUDIO_GREETING
+  );
+
+  if (arg(0) == 'admin' && in_array(arg(5), $fields_array)) {
+    return TRUE;
+  }
+  else {
+    return FALSE;
   }
 }
 
@@ -153,7 +184,7 @@ function _voipextension_expand_voipextension($element, $edit, $form_state, $form
   unset($element['#voipextension_settings']);
 
   // Make a reference to the settings.
-  $settings =& $element['voipextension_settings']['#value'];
+  $settings = & $element['voipextension_settings']['#value'];
 
   if (isset($element['#default_value']['veid']) && $element['#default_value']['veid']) {
     // Keep track of the old VEID.
@@ -174,7 +205,7 @@ function _voipextension_expand_voipextension($element, $edit, $form_state, $form
     $defaults = voipextension_load_voipextension($element['veid']['#value']);
   }
 
-  $fsettings =& $settings['form']['fields'];
+  $fsettings = & $settings['form']['fields'];
 
   // $defaults is not necessarily what we want.
   // If #default_value was already specified, we want to use that, because
@@ -403,7 +434,8 @@ function voipextension_field_settings($op, $field) {
       );
       break;
     case 'views data':
-      // We want to for the most part use the CCK stuff, but we also want to patch in a relationship so voipextension's views support can target
+      // We want to for the most part use the CCK stuff, but we also want to
+      // patch in a relationship so voipextension's views support can target
       // cck fields directly.
       $table = content_views_tablename($field);
       $db_info = content_database_info($field);
@@ -605,12 +637,12 @@ function voipextension_form_alter(&$form, &$form_state, $form_id) {
     case 'user_profile_form':
       module_load_include('inc', 'voipextension', 'includes/voipextension.api');
       $voip_extension = VoipExtension::getVoipExtensionFromUid($form['#uid']);
-      if (is_array($voip_extension) && count($voip_extension) > 1) {
+      if (is_object($voip_extension) && isset($voip_extension->veid) && $voip_extension->veid > 0) {
         $form['account']['voipextension_number'] = array(
           '#prefix' => '<div id="voipextension-number-wrapper" class="form-item"><label for="edit-voipextension-number">'.t('VoIP Extension Number').': <span title="This field is required." class="form-required">*</span></label>',
           '#type' => 'markup',
           '#suffix' => '</div></div>',
-          '#value' => $voip_extension['veid']
+          '#value' => $voip_extension->veid
         );
       }
       // If the current loggedin user is not having the permission to edit the VoIP extension fields, then return back.
@@ -672,7 +704,6 @@ function voipextension_form_alter(&$form, &$form_state, $form_id) {
     case 'content_field_overview_form':
       voipextension_content_field_overview_form_alter($form, $form_state);
       $form['#validate'][] = 'voipextension_content_field_overview_form_validate';
-      $form['#submit'][]   = 'voipextension_content_field_overview_form_submit';
       break;
     case 'content_field_edit_form':
       if ($form['#field']['type'] == 'voipextension' && $form['#field']['module'] == 'voipextension') {
@@ -685,67 +716,9 @@ function voipextension_form_alter(&$form, &$form_state, $form_id) {
         );
       }
       break;
-      case 'content_field_remove_form':
-        $submit_array = $form['#submit'];
-        $form['#submit'] = array();
-        $form['#submit'][] = 'voipextension_content_field_remove_form_submit';
-        foreach ($submit_array as $index => $submit_function) {
-          $form['#submit'][] = $submit_function;
-        }
+      case 'node_type_form':
+        voipextension_node_type_form_alter($form, $form_state);
         break;
-  }
-}
-
-/**
- * Implementation of hook_user().
- */
-function voipextension_user($op, &$edit, &$account, $category = NULL) {
-  switch ($op) {
-    // The user object has been updated and changed. Use this if (probably along with 'insert') if you want to reuse some information from
-    // the user object.
-    case 'after_update':
-      break;
-    // A set of user information categories is requested.
-    case 'categories':
-      break;
-    // The user account is being deleted. The module should remove its custom additions to the user object from the database.
-    case 'delete':
-      break;
-    // The user account edit form is about to be displayed. The module should present the form elements it wishes to inject into the form.
-    case 'form':
-      break;
-    // The user account is being added. The module should save its custom additions to the user object into the database and set the saved
-    // fields to NULL in $edit.
-    case 'insert':
-      break;
-    // The user account is being loaded. The module may respond to this and insert additional information into the user object.
-    case 'load':
-      break;
-    // The user just logged in.
-    case 'login':
-      break;
-    // The user just logged out.
-    case 'logout':
-      break;
-    // The user account registration form is about to be displayed. The module should present the form elements it wishes to inject into
-    // the form.
-    case 'register':
-      break;
-    // Modify the account before it gets saved.
-    case 'submit':
-      break;
-    // The user account is being changed. The module should save its custom additions to the user object into the database and set the
-    // saved fields to NULL in $edit.
-    case 'update':
-      break;
-    // The user account is about to be modified. The module should validate its custom additions to the user object, registering errors as
-    // necessary.
-    case 'validate':
-      break;
-    // The user's account information is being displayed. The module should format its custom additions for display, and add them to the
-    // $account->content array.
-    case 'view':
-      break;
   }
 }
 
@@ -763,10 +736,6 @@ function voipextension_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
  * CCK Emptiness check.
  */
 function voipextension_content_is_empty($item, $field) {
-//  $fields = array();
-//  if (voipextension_is_empty($item, $fields)) {
-//    return TRUE;
-//  }
   return FALSE;
 }
 
@@ -864,14 +833,26 @@ function voipextension_views_post_render(&$view, &$output, &$cache) {
 }
 
 /**
- * Implementation of hook_theme_registry_alter().
+ * Implementation of hook_preprocess_foo().
  *
- * @param $theme_registry
- *   Theme registry array.
+ * @param $variables
+ *   Theme Variables array.
  */
-function voipextension_theme_registry_alter(&$theme_registry) {
-  if (isset($theme_registry['content_field_overview_form'])) {
-    $path = drupal_get_path('module', 'voipextension') .'/templates';
-    $theme_registry['content_field_overview_form']['path'] = $path;
+function voipextension_preprocess_content_field_overview_form(&$variables) {
+  $escape_fields_array = array(
+    VOIPEXTENSION_EXTENSION_MAIN_FIELD,
+    VOIPEXTENSION_EXTENSION_LISTED,
+    VOIPEXTENSION_AUDIO_NAME,
+    VOIPEXTENSION_AUDIO_DESCRIPTION,
+    VOIPEXTENSION_AUDIO_GREETING
+  );
+  foreach ($variables['rows'] as $index => $row) {
+    if (in_array($row->field_name, $escape_fields_array)) {
+      unset($variables['rows'][$index]);
+    }
+
+    if ($row->row_type == 'group' && isset($row->group_name) && ($row->group_name == VOIPEXTENSION_GROUP_FIELD_NAME || $row->group_name == VOIPEXTENSION_VOIPDIRECTORY_GROUP_FIELD_NAME)) {
+      unset($variables['rows'][$index]);
+    }
   }
 }

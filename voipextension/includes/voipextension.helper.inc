@@ -376,3 +376,38 @@ function voipextension_delete($veid) {
 function voipextension_instance_revision_delete($veid, $vid) {
   return db_query('DELETE FROM {voipextensions_instance} WHERE veid = %d AND vid = %d', $veid, $vid);
 }
+
+/**
+ * Find the content type associated with users.
+ *
+ * A valid content type acting as a content profile for users.
+ */
+function voipextension_user_profile_content_type() {
+  $content_profile = '';
+  foreach (content_profile_get_types('names') as $type => $type_name) {
+    if (is_content_profile($type)) {
+      // First content type found, which is associated with users.
+      $content_profile = $type;
+      break 1;
+    }
+  }
+  return $content_profile;
+}
+
+/**
+ * If the status of cck field changes then corresponding to that content type
+ * all the voip extensions will also be updated.
+ *
+ * @param $node_type
+ * @param $status
+ */
+function voipextension_update_extensions_status($node_type, $status) {
+  $query = 'SELECT nid FROM {node} WHERE type = "%s" ORDER BY nid ASC';
+  $result = db_query($query, $node_type);
+  while ($row = db_fetch_object($result)) {
+    $veid = db_result(db_query_range('SELECT veid FROM {voipextensions_instance} WHERE nid = %d ORDER BY vid DESC', $row->nid, 0, 1));
+    if ($veid) {
+      db_query('UPDATE {voipextensions} SET status = %d WHERE veid = %d', $status, $veid);
+    }
+  }
+}

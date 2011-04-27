@@ -2,127 +2,77 @@
 /**
  * @file
  *
- * Voicemail Database operations.
+ * Helper file to do all Database level operations on Voicemail tables
  */
-
 
 /**
- * Save the voicemailbox settings to the database for each voip extension.
- * @param $voicemailbox
- *   An array having all the required information to setup voicemail.
- * @return
- *   An integer having the number of rows affected usually one if it is
- *   success else boolean false
- */
-function voicemail_save($voicemailbox) {
-  if (isset($voicemailbox['veid']) && trim($voicemailbox['veid']) != '') {
-    $voicemail_settings = voicemail_load_settings($voicemailbox['veid']);
-    // Already exists so just update the voicemailbox settings.
-    if (is_object($voicemail_settings) && isset($voicemail_settings->veid)) {
-      $args = array();
-      $args[] = $voicemailbox['send_notifications'] ? 1 : 0;
-      $args[] = $voicemailbox['is_enabled'] ? 1 : 0;
-      $args[] = $voicemailbox['audio_greetings_fid'] ? $voicemailbox['audio_greetings_fid'] : 0;
-      $args[] = $voicemail_settings->veid;
-
-      db_query('UPDATE {voicemailbox} SET send_notifications = %d, is_enabled = %d, audio_greetings_fid = %d WHERE veid = %d', $args);
-      return db_affected_rows();
-    }
-    else {
-      // Insert a new entry.
-      $args = array();
-      $args[] = $voicemailbox['veid'];
-      $args[] = $voicemailbox['send_notifications'] ? 1 : 0;
-      $args[] = $voicemailbox['is_enabled'] ? 1 : 0;
-      $args[] = $voicemailbox['audio_greetings_fid'] ? $voicemailbox['audio_greetings_fid'] : 0;
-
-      db_query('INSERT INTO {voicemailbox} (veid, send_notifications, is_enabled, audio_greetings_fid) VALUES (%d, %d, %d, %d)', $args);
-      return db_affected_rows();
-    }
-  }
-
-  return FALSE;
-}
-
-/**
- * Load the voicemail related settings.
+ * Save helper for Voicemail
+ * It checks that if voicemail already exists for the provided VoIP Extension
+ * then simply updates the Voicemail otherwise make a new entry
  *
- * @param $veid
- *   An integer holding voip extension number
- *
+ * @param $voicemail
+ *   An array having all the required information to save Voicemail
  * @return
- *   The selected row of voip extension in an object format if success else boolean FALSE.
+ *   Boolean TRUE if saved else FALSE
  */
-function voicemail_load_settings($veid) {
-  $query = 'SELECT * FROM {voicemailbox} WHERE veid = %d';
-  $result = db_query($query, $veid);
-  if ($result) {
-    return db_fetch_object($result);
-  }
-  else {
-    return FALSE;
-  }
-}
+function voicemail_save($voicemail) {
+  $voicemail_obj = voicemail_load($voicemail['veid']);
+  // Update Query
+  if (isset($voicemail_obj->veid)) {
+    $query = 'UPDATE {voicemailbox} SET send_notifications = %d, is_enabled = %d, audio_greetings_fid = %d, status = %d';
+    $query .= ' WHERE veid = %d';
 
-/**
- * Save the message sent from sender to the reciever.
- *
- * @param $voicemail_message
- *   An array holding the audio file id.
- * @return
- *   An integer having the message id or boolean FALSE.
- */
-function voicemail_messages_save($voicemail_message) {
-  $result = db_query('INSERT INTO {voicemail_messages} (audio_message_fid) VALUES (%d)', $voicemail_message['audio_message_fid']);
-  if ($result) {
-    return db_last_insert_id('voicemail_messages', 'mid');
+    $args = array();
+    $args[] = $voicemail['send_notifications'] ? 1 : 0;
+    $args[] = $voicemail['is_enabled'];
+    $args[] = $voicemail['audio_greetings_fid'];
+    $args[] = $voicemail['status'] ? 1 : 0;
+    $args[] = $voicemail['veid'];
   }
-  else {
-    return FALSE;
+  else { // Insert Query
+    $query = 'INSERT INTO {voicemailbox} (veid, send_notifications, is_enabled, audio_greetings_fid, status) VALUES (%d, %d, %d';
+    $query .= ', %d, %d)';
+    $args = array();
+    $args[] = $voicemail['veid'];
+    $args[] = $voicemail['send_notifications'] ? 1 : 0;
+    $args[] = $voicemail['is_enabled'];
+    $args[] = $voicemail['audio_greetings_fid'];
+    $args[] = $voicemail['status'] ? 1 : 0;
   }
-}
-
-/**
- * Save the message entries to the outbox/sent folder.
- *
- * @param $voicemail_outbox
- *   An array having voipextension number and message id.
- * @return
- *   An autoincremented key if saved properly else FALSE.
- */
-function voicemail_outbox_save($voicemail_outbox) {
-  $query = 'INSERT INTO {voicemail_outbox} (veid, mid, sent_on) VALUES (%d, %d, %d)';
-  $result = db_query($query, $voicemail_outbox['veid'], $voicemail_outbox['mid'], time());
-  if ($result) {
-    return db_last_insert_id('voicemail_outbox', 'id');
-  }
-  else {
-    return FALSE;
-  }
-}
-
-/**
- * Save the message attributes in the Inbox/Recieved folder.
- *
- * @param $voicemail_inbox
- *   An array having the voipextension number, message id and other attributes
- *   required for inbox folder.
- * @return
- *   An autoincremented key if saved else FALSE.
- */
-function voicemail_inbox_save($voicemail_inbox) {
-  $query = 'INSERT INTO {voicemail_inbox} (veid, mid, caller_name, caller_number, is_new, received_on) VALUES (%d, %d, "%s", "%s", %d, %d)';
-  $args = array();
-  $args[] = $voicemail_inbox['veid'];
-  $args[] = $voicemail_inbox['mid'];
-  $args[] = $voicemail_inbox['caller_name'];
-  $args[] = $voicemail_inbox['caller_number'];
-  $args[] = 1;
-  $args[] = time();
-
   $result = db_query($query, $args);
-  if ($result) {
-    return db_last_insert_id('voicemail_inbox', 'id');
+
+  if (db_affected_rows() > 0) {
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Load the Voicemail data in an object from the VoIP Extension provided
+ * @param $veid
+ *   An integer valued VoIP Extension number
+ * @return
+ *   An object.
+ */
+function voicemail_load($veid) {
+  $query = 'SELECT * FROM {voicemailbox} WHERE veid = %d';
+  $voicemail = db_fetch_object(db_query($query, $veid));
+  return $voicemail;
+}
+
+/**
+ * Deletes the Voicemail data.
+ * @param $veid
+ *   An integer valued VoIP Extension number
+ * @return
+ *   A boolean TRUE if success else FALSE
+ */
+function voicemail_delete($veid) {
+  db_query('DELETE FROM {voicemailbox} WHERE veid = %d', $veid);
+  if (db_affected_rows() > 0) {
+    return TRUE;
   }
   else {
     return FALSE;

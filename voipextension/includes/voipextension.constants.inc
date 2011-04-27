@@ -33,6 +33,16 @@ define('VOIPEXTENSION_ALLOW_ANONYMOUS_ACCESS', 'allow anonymous access to voip e
 define('VOIPEXTENSION_GROUP_FIELD_NAME', 'group_voipextension_settings');
 
 /**
+ * Standard fieldset for holding voipdirectory fields.
+ */
+define('VOIPEXTENSION_VOIPDIRECTORY_GROUP_FIELD_NAME', 'group_voipdirectory_settings');
+
+/**
+ * VoIP Extension Field name in CCK Fields
+ */
+define('VOIPEXTENSION_EXTENSION_MAIN_FIELD', 'field_voipextension_main_field');
+
+/**
  * Is voipextension field listed in VoIP directory or not.
  */
 define('VOIPEXTENSION_EXTENSION_LISTED', _voipextension_directory_field_names('VOIPEXTENSION_EXTENSION_LISTED'));

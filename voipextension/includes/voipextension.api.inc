@@ -31,36 +31,36 @@ class VoipExtension {
    *   User id.
    */
   public function  __construct($veid = '', $nid = '', $uid = '') {
-    if (isset($veid)) {
+    if (isset($veid) && trim($veid) != '' && ctype_digit((string) $veid)) {
       $voip_extension = self::loadExtension($veid);
     }
-    elseif (isset($nid)) {
+    elseif (isset($nid) && trim($nid) != '' && ctype_digit((string) $nid)) {
       $voip_extension = self::getVoipExtensionFromNid($nid);
     }
-    elseif (isset($uid)) {
+    elseif (isset($uid) && trim($uid) != '' && ctype_digit((string) $uid)) {
       $voip_extension = self::getVoipExtensionFromUid($uid);
     }
 
-    if (isset($voip_extension) && is_array($voip_extension) && count($voip_extension) > 1) {
-      $this->veid = $voip_extension['veid'];
-      if (isset($voip_extension['node'])) {
-        $this->extensionNid = $voip_extension['node']->nid;
+    if (isset($voip_extension->veid) && $voip_extension->veid > 0 && is_object($voip_extension)) {
+      $this->veid = $voip_extension->veid;
+      if (isset($voip_extension->node)) {
+        $this->extensionNid = $voip_extension->node->nid;
       }
 
-      if (isset($voip_extension['user'])) {
-        $this->extensionUid = $voip_extension['user']->uid;
+      if (isset($voip_extension->user)) {
+        $this->extensionUid = $voip_extension->user->uid;
       }
 
-      $this->extensionName       = $voip_extension['extension_name'];
-      $this->scriptName          = $voip_extension['script_name'];
-      $this->extensionEnabled    = $voip_extension['extension_status'];
-      $this->extensionListed     = $voip_extension['extension_listed'];
-      $this->audioNameFid        = $voip_extension['audio_name_fid'];
-      $this->audioDescriptionFid = $voip_extension['audio_description_fid'];
-      $this->audioGreetingFid    = $voip_extension['audio_greeting_fid'];
+      $this->extensionName       = $voip_extension->extension_name;
+      $this->scriptName          = $voip_extension->script_name;
+      $this->extensionEnabled    = $voip_extension->extension_status;
+      $this->extensionListed     = $voip_extension->extension_listed;
+      $this->audioNameFid        = $voip_extension->audio_name_fid;
+      $this->audioDescriptionFid = $voip_extension->audio_description_fid;
+      $this->audioGreetingFid    = $voip_extension->audio_greeting_fid;
     }
     else {
-			throw new Exception(t('VoIPExtension failed to initialize due to invalid parameters'));
+      throw new Exception(t('VoIPExtension failed to initialize due to invalid parameters'));
     }
   }
 
@@ -73,7 +73,7 @@ class VoipExtension {
    *   Returns boolean false if no data is available.
    */
   public static function loadExtension($veid) {
-    require_once dirname(__FILE__) .'/voipextension.helper.inc';
+    module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
     $voip_extension = voipextension_load_voipextension($veid);
     if (is_array($voip_extension) && count($voip_extension) > 1) {
       $nid = _voipextension_get_nid_from_veid($voip_extension['veid']);
@@ -86,7 +86,7 @@ class VoipExtension {
           }
         }
       }
-      return $voip_extension;
+      return (object) $voip_extension;
     }
     else {
       return FALSE;
@@ -101,7 +101,7 @@ class VoipExtension {
    *   An array having the VoIP extension data.
    */
   public static function getVoipExtensionFromNid($nid) {
-    require_once dirname(__FILE__) .'/voipextension.helper.inc';
+    module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
     $veid = _voipextension_get_veid_from_nid($nid);
     if ($veid) {
       return self::loadExtension($veid);
@@ -130,7 +130,7 @@ class VoipExtension {
         foreach (content_profile_get_types('names') as $type => $type_name) {
           $node = content_profile_load($type, $uid);
           if ($node) {
-            require_once dirname(__FILE__) .'/voipextension.helper.inc';
+            module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
             $veid = _voipextension_get_veid_from_nid($node->nid);
           }
 
@@ -158,7 +158,7 @@ class VoipExtension {
    */
   public function isUserExtension() {
     $veid = $this->veid;
-    require_once dirname(__FILE__) .'/voipextension.helper.inc';
+    module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
     $nid = _voipextension_get_nid_from_veid($veid);
     if ($nid) {
       $node = node_load(array('nid' => $nid));
@@ -230,7 +230,7 @@ class VoipExtension {
    *   An array having the file related information.
    */
   private static function getVoipExtensionFileInfo($fid) {
-    require_once dirname(__FILE__) .'/voipextension.helper.inc';
+    module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
     return _voipextension_get_file_info($fid);
   }
 
@@ -323,9 +323,9 @@ class VoipExtension {
       $attributes['extension_listed'] = $this->extensionListed;
     }
 
-    require_once dirname(__FILE__) .'/voipextension.field_operations.inc';
-    require_once dirname(__FILE__) .'/voipextension.helper.inc';
-    require_once dirname(__FILE__) .'/voipextension.constants.inc';
+    module_load_include('inc', 'voipextension', 'includes/voipextension.field_operations');
+    module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
+    module_load_include('inc', 'voipextension', 'includes/voipextension.constants');
 
     $veid = $this->veid;
     $nid = _voipextension_get_nid_from_veid($veid);
@@ -458,7 +458,8 @@ class VoipExtension {
       while ($row = db_fetch_object($result)) {
         $results['data'][$row->veid] = self::loadExtension($row->veid);
       }
-      return $results;
+      $results['data'] = (object) $results['data'];
+      return (object) $results;
     }
     return FALSE;
   }

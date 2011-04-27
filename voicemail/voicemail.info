@@ -1,6 +1,6 @@
-name = Voip Voicemail
-package = CCK
-description = The voip voicemail module
+name = VoIP Voicemail
+package = VoIP
+description = VoIP Voicemail Module
 dependencies[] = content
 dependencies[] = voipextension
 version = VERSION

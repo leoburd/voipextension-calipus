@@ -10,6 +10,32 @@ INSTALLATION
 
 2. Make sure before creating cck field of voice mailbox you must have voipextension field in your content type.
 
-2. Goto Manage Fields of any content type and then create a cck field of type "File" and then choose widget as "Voip mailbox".
+2. Goto Edit of any content type and then check the checkbox Voicemail from the bottom,
+   This option is only available if the selected content type is having VoIP Extension already been associated.
 
 3. Configure the settings of the newly created field.
+
+
+[VoiceMailBox and VoiceMailMessage API Usage]
+
+// Create a new Voice Message (Sent Message)
+module_load_include('inc', 'voicemail', 'includes/voicemailmessage.api');
+$voicemail_message = new VoicemailMessage(1);
+$voicemail_message->veid = 2;
+$voicemail_message->audioMessageFid = 254;
+$voicemail_message->callerName = 'Vikas Test';
+$voicemail_message->callerNumber = '9818439935';
+
+$mid = $voicemail_message->saveSentMessage();
+
+
+
+// Save a message to Inbox.
+module_load_include('inc', 'voicemail', 'includes/voicemailmessage.api');
+
+$voicemail_message = new VoicemailMessage($mid);
+$voicemail_message->veid = 1; // VoIP Extension of the Receiver
+$voicemail_message->saveInboxMessage();
+
+
+

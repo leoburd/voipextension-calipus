@@ -178,6 +178,10 @@ function voipextension_content_field_overview_form_validate($form, &$form_state)
   if (isset($form_state['clicked_button']['#post']['_add_new_field']['field_name']) &&
       $form_state['clicked_button']['#post']['_add_new_field']['field_name'] != '') {
     $field_name = 'field_'. $form_state['clicked_button']['#post']['_add_new_field']['field_name'];
+    if ($field_name == VOIPEXTENSION_EXTENSION_MAIN_FIELD) {
+      form_set_error('_add_new_field', t('Please choose some other field name. This is reserved to be use by VoIP Extension module.'));
+    }
+
     module_load_include('inc', 'voipextension', 'includes/voipextension.field_operations');
     if (in_array($field_name, _voipextension_directory_field_names())) {
       form_set_error('_add_new_field', t('Please choose some different field name. This is reserved to be used by VoIP extension module.'));
@@ -187,59 +191,200 @@ function voipextension_content_field_overview_form_validate($form, &$form_state)
   if (isset($form_state['clicked_button']['#post']['_add_new_group']['group_name']) &&
       $form_state['clicked_button']['#post']['_add_new_group']['group_name'] != '') {
     $group_name = 'group_'. $form_state['clicked_button']['#post']['_add_new_group']['group_name'];
-    if ($group_name == VOIPEXTENSION_GROUP_FIELD_NAME) {
+    if ($group_name == VOIPEXTENSION_GROUP_FIELD_NAME || $group_name == VOIPEXTENSION_VOIPDIRECTORY_GROUP_FIELD_NAME) {
       form_set_error('_add_new_group', t('Please choose some different group name. This is reserved to be used by VoIP extension module.'));
     }
   }
 
-  if (isset($form_state['clicked_button']['#post']['_add_new_field']) && is_array($form_state['clicked_button']['#post']['_add_new_field']) &&
-      isset($form_state['clicked_button']['#post']['_add_new_field']['type']) && $form_state['clicked_button']['#post']['_add_new_field']['type'] != ''
-      && isset($form_state['clicked_button']['#post']['_add_new_field']['widget_type']) &&
-      $form_state['clicked_button']['#post']['_add_new_field']['widget_type'] != '' &&
-      $form_state['clicked_button']['#post']['_add_new_field']['type'] == 'voipextension' &&
-      $form_state['clicked_button']['#post']['_add_new_field']['widget_type'] == 'voipextension') {
+  if (isset($form_state['clicked_button']['#post']['_add_new_field']) && is_array($form_state['clicked_button']['#post']['_add_new_field']) && isset($form_state['clicked_button']['#post']['_add_new_field']['type']) && $form_state['clicked_button']['#post']['_add_new_field']['type'] != '' && isset($form_state['clicked_button']['#post']['_add_new_field']['widget_type']) && $form_state['clicked_button']['#post']['_add_new_field']['widget_type'] != '' && $form_state['clicked_button']['#post']['_add_new_field']['type'] == 'voipextension' && $form_state['clicked_button']['#post']['_add_new_field']['widget_type'] == 'voipextension') {
     if (_voipextension_check_cck_field_exists($form['#type_name'], 'voipextension', 'voipextension')) {
       form_set_error('_add_new_field', t('Only one VoIP extension cck field can be added to one content type'));
     }
   }
 }
 
+
 /**
- * Submit hook for content_field_overview form.
- * Create and setup the related or VoIP directory fields, if the current created field is voipextension field.
- *
- * @param $form
- * @param $form_state
+ * Remove or hide VoIP directory audio and status fields from other content types in the existing cck fields section.
  */
-function voipextension_content_field_overview_form_submit($form, &$form_state) {
-  if ((isset($form_state['clicked_button']['#post']['_add_existing_field']) && is_array($form_state['clicked_button']['#post']['_add_existing_field']) &&
-      isset($form_state['clicked_button']['#post']['_add_existing_field']['widget_type']) &&
-      $form_state['clicked_button']['#post']['_add_existing_field']['widget_type'] != '' &&
-      $form_state['clicked_button']['#post']['_add_existing_field']['widget_type'] == 'voipextension') ||
-      (isset($form_state['clicked_button']['#post']['_add_new_field']) && is_array($form_state['clicked_button']['#post']['_add_new_field']) &&
-      isset($form_state['clicked_button']['#post']['_add_new_field']['type']) && $form_state['clicked_button']['#post']['_add_new_field']['type'] != ''
-      && isset($form_state['clicked_button']['#post']['_add_new_field']['widget_type']) &&
-      $form_state['clicked_button']['#post']['_add_new_field']['widget_type'] != '' &&
-      $form_state['clicked_button']['#post']['_add_new_field']['type'] == 'voipextension' &&
-      $form_state['clicked_button']['#post']['_add_new_field']['widget_type'] == 'voipextension')) {
-
-    if (isset($form_state['clicked_button']['#post']['_add_new_field']['widget_type']) &&
-        $form_state['clicked_button']['#post']['_add_new_field']['widget_type'] == 'voipextension') {
-      $form_state['values']['_add_new_field']['parent'] = VOIPEXTENSION_GROUP_FIELD_NAME;
+function voipextension_content_field_overview_form_alter(&$form, &$form_state) {
+  // Remove the VoIP Extension widget from the Drop Down
+  if (isset($form['_add_new_field']['type']['#options']['voipextension'])) {
+    // Unset the widget type first.
+    if (isset($form['_add_new_field']['widget_type']['#options'][$form['_add_new_field']['type']['#options']['voipextension']]['voipextension'])) {
+      unset($form['_add_new_field']['widget_type']['#options'][$form['_add_new_field']['type']['#options']['voipextension']]);
     }
-    if (isset($form_state['clicked_button']['#post']['_add_existing_field']['widget_type']) &&
-        $form_state['clicked_button']['#post']['_add_existing_field']['widget_type'] == 'voipextension') {
-      $form_state['values']['_add_existing_field']['parent'] = VOIPEXTENSION_GROUP_FIELD_NAME;
-    }
+    unset($form['_add_new_field']['type']['#options']['voipextension']);
+  }
 
-    $content_type = $form['#type_name'];
+  // Delete VoIP Extension widget type from Existing fields.
+  if (isset($form['_add_existing_field']['widget_type']['#options']) && is_array($form['_add_existing_field']['widget_type']['#options']) && count($form['_add_existing_field']['widget_type']['#options']) > 0) {
+    foreach ($form['_add_existing_field']['widget_type']['#options'] as $option_index => $options) {
+      if (is_array($options) && count($options) > 0) {
+        if (isset($options['voipextension'])) {
+          unset($form['_add_existing_field']['widget_type']['#options'][$option_index]);
+          break 1;
+        }
+      }
+    }
+  }
+
+  // Remove VoIP Extension field from existing fields
+  if (isset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_EXTENSION_MAIN_FIELD])) {
+    unset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_EXTENSION_MAIN_FIELD]);
+  }
+
+  // Remove VoIP Extension Listed in Phone Directory from existing fields
+  if (isset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_EXTENSION_LISTED])) {
+    unset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_EXTENSION_LISTED]);
+  }
+  // Remove Audio name field from existing fields
+  if (isset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_AUDIO_NAME])) {
+    unset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_AUDIO_NAME]);
+  }
+  // Remove Audio description field from existing fields
+  if (isset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_AUDIO_DESCRIPTION])) {
+    unset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_AUDIO_DESCRIPTION]);
+  }
+  // Remove Audio greeting field from existing fields
+  if (isset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_AUDIO_GREETING])) {
+    unset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_AUDIO_GREETING]);
+  }
+}
+
+function voipextension_node_type_form_alter(&$form, &$form_state) {
+  $voip_extension_weight = 33; // default weight of the fieldset.
+  $content_type = $form['#node_type']->type;
+  if (isset($form['submit']['#weight'])) {
+    $voip_extension_weight = $form['submit']['#weight'] - 0.99;
+  }
+
+  $form['voip_extension'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('VoIP Extension'),
+    '#group' => 'additional_settings',
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#weight' => $voip_extension_weight
+  );
+
+  $form['voip_extension']['voip_extension_use'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use this content type as a VoIP Extension'),
+    '#default_value' => variable_get('voip_extension_use_'. $content_type, FALSE),
+    '#attributes' => array(
+      'onclick' => 'javascript: if (jQuery(this).attr("checked")) {
+          jQuery("fieldset#node_type_form_voip_extension_settings_id").show("slow");
+          jQuery("fieldset#node_type_form_voip_directory_configuration_id").show("slow");
+        }
+        else {
+          jQuery("fieldset#node_type_form_voip_extension_settings_id").hide("fast");
+          jQuery("fieldset#node_type_form_voip_directory_configuration_id").hide("fast");
+        };'
+    )
+  );
+
+  $voip_extension_settings_style = 'display:none;';
+  if (variable_get('voip_extension_use_'. $content_type, FALSE)) {
+    $voip_extension_settings_style = 'display:block;';
+  }
+    // VoIP Extension field settings.
+  $form['voip_extension']['voip_extension_settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('VoIP Extension Default Settings'),
+    '#group' => 'additional_settings',
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#attributes' => array(
+      'style' => $voip_extension_settings_style,
+      'id' => 'node_type_form_voip_extension_settings_id'
+    )
+  );
+
+  $default_script_name = variable_get('default_script_name_'. $content_type, variable_get('voipextension_script_name',''));
+  $form['voip_extension']['voip_extension_settings']['default_script_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default Script Name'),
+    '#maxlength' => 100,
+    '#size' => 30,
+    '#default_value' => $default_script_name
+  );
+
+  $default_extension_status = variable_get('default_extension_status_'. $content_type, variable_get('voipextension_status', 0));
+  $form['voip_extension']['voip_extension_settings']['default_extension_status'] = array(
+    '#type' => 'radios',
+    '#title' => t('Default Extension status'),
+    '#options' => array(1 => t('Enabled'), 0 => t('Disabled')),
+    '#default_value' => $default_extension_status ? $default_extension_status : 0
+  );
+
+  if (variable_get('voip_extension_use_'. $content_type, FALSE)) {
+    $form['voip_extension']['voip_extension_fields_configuration'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('VoIP Directory Fields Configuration'),
+      '#group' => 'additional_settings',
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#attributes' => array(
+        'id' => 'node_type_form_voip_directory_configuration_id'
+      )
+    );
+
+    $voipextension_configuration_options = '<div class="voipextension-'. $content_type .'configuration-options">';
+    $voipextension_configuration_options .= l(t('Configure Extension listed in phone directory'), 'admin/content/node-type/'. $content_type .'/fields/'. VOIPEXTENSION_EXTENSION_LISTED);
+    $voipextension_configuration_options .= '<br />';
+    $voipextension_configuration_options .= l(t('Configure Audio name Field'), 'admin/content/node-type/'. $content_type .'/fields/'. VOIPEXTENSION_AUDIO_NAME);
+    $voipextension_configuration_options .= '<br />';
+    $voipextension_configuration_options .= l(t('Configure Audio Description Field'), 'admin/content/node-type/'. $content_type .'/fields/'. VOIPEXTENSION_AUDIO_DESCRIPTION);
+    $voipextension_configuration_options .= '<br />';
+    $voipextension_configuration_options .= l(t('Configure Audio Greeting'), 'admin/content/node-type/'. $content_type .'/fields/'. VOIPEXTENSION_AUDIO_GREETING);
+    $voipextension_configuration_options .= '<br />';
+    $voipextension_configuration_options .= '</div>';
+
+    $form['voip_extension']['voip_extension_fields_configuration']['configuration_options'] = array(
+      '#type' => 'markup',
+      '#value' => $voipextension_configuration_options
+    );
+  }
+
+  $form['#submit'][] = 'voipextension_node_type_form_submit';
+}
+
+function voipextension_node_type_form_submit($form, &$form_state) {
+  // VoIP Extension field doesn't exists yet.
+  if (!isset($form_state['values']['voip_extension_use'])) {
+    return TRUE;
+  }
+
+  module_load_include('inc', 'voipextension', 'includes/voipextension.helper');
+
+  $content_type = $form_state['values']['type'];
+  if ($form_state['values']['voip_extension_use']) {
+    voipextension_change_fields_status(1, $content_type);
+    voipextension_update_extensions_status($content_type, 1);
+
+    _voipextension_create_extension_main_field($content_type);
+    $group = _voipextension_extension_group_defintion();
+    _voipextension_create_fieldset_group($content_type, $group);
+
+    $group = _voipextension_voipdirectory_settings_group();
+    _voipextension_create_fieldset_group($content_type, $group);
+
     _voipextension_create_extension_listed_field($content_type);
-    _voipextension_create_voipextension_group($content_type);
     _voipextension_create_audio_fields($content_type);
 
-    $voip_field_name = 'field_'. $form_state['clicked_button']['#post']['_add_new_field']['field_name'];
-
     $group_name = VOIPEXTENSION_GROUP_FIELD_NAME;
+    $fields = array(VOIPEXTENSION_EXTENSION_MAIN_FIELD);
+    // Assign the voip extension fields to the selcted field group.
+    foreach ($fields as $index => $field_name) {
+      $form_values = array();
+      $form_values['type_name']  = $content_type;
+      $form_values['group']      = $group_name;
+      $form_values['field_name'] = $field_name;
+      fieldgroup_update_fields($form_values);
+    }
+
+    $group_name = VOIPEXTENSION_VOIPDIRECTORY_GROUP_FIELD_NAME;
     $fields = array(VOIPEXTENSION_EXTENSION_LISTED, VOIPEXTENSION_AUDIO_NAME, VOIPEXTENSION_AUDIO_DESCRIPTION, VOIPEXTENSION_AUDIO_GREETING);
     // Assign the voip extension fields to the selcted field group.
     foreach ($fields as $index => $field_name) {
@@ -249,51 +394,11 @@ function voipextension_content_field_overview_form_submit($form, &$form_state) {
       $form_values['field_name'] = $field_name;
       fieldgroup_update_fields($form_values);
     }
-  }
-}
 
-/**
- * Submit hook of content_field_remove form.
- * If the current deleted field is a voipextension field then delete all the
- * related VoIP directory fields as well from the selcted content type.
- * @param $form
- * @param $form_state
- */
-function voipextension_content_field_remove_form_submit($form, &$form_state) {
-  if (isset($form['field_name']['#value']) && isset($form['type_name']['#value'])) {
-    $content_field_info = content_fields($form['field_name']['#value'], $form['type_name']['#value']);
-    if (isset($content_field_info['type']) && $content_field_info['type'] == 'voipextension' && isset($content_field_info['module']) &&
-        $content_field_info['module'] == 'voipextension') {
-      _voipextension_delete_extension_listed_field($content_field_info['type_name']);
-      _voipextension_delete_audio_fields($content_field_info['type_name']);
-      _voipextension_delete_voipextension_group($content_field_info['type_name']);
-
-      $fields = array(VOIPEXTENSION_EXTENSION_LISTED, VOIPEXTENSION_AUDIO_NAME, VOIPEXTENSION_AUDIO_DESCRIPTION, VOIPEXTENSION_AUDIO_GREETING);
-      // Delete the voip extension fields from the selcted field group.
-      foreach ($fields as $index => $field_name) {
-        $form_values = array();
-        $form_values['type_name']  = $content_field_info['type_name'];
-        $form_values['field_name'] = $field_name;
-        fieldgroup_update_fields($form_values);
-      }
-    }
+    drupal_set_message(t('VoIP Extension field have been associated with %content_type', array('%content_type' => $content_type)));
   }
-}
-
-/**
- * Remove or hide VoIP directory audio and status fields from other content types in the existing cck fields section.
- */
-function voipextension_content_field_overview_form_alter(&$form, &$form_state) {
-  if (isset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_EXTENSION_LISTED])) {
-    unset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_EXTENSION_LISTED]);
-  }
-  if (isset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_AUDIO_NAME])) {
-    unset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_AUDIO_NAME]);
-  }
-  if (isset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_AUDIO_DESCRIPTION])) {
-    unset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_AUDIO_DESCRIPTION]);
-  }
-  if (isset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_AUDIO_GREETING])) {
-    unset($form['_add_existing_field']['field_name']['#options'][VOIPEXTENSION_AUDIO_GREETING]);
+  else {
+    voipextension_change_fields_status(0, $content_type);
+    voipextension_update_extensions_status($content_type, 0);
   }
 }

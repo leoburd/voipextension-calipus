@@ -11,22 +11,41 @@
 
 /**
  * Delete all the fields created by VoIP extension module, including VoIP directory fields as well.
- *
- * @todo Some bug is here, while deleting cck fields.
  */
 function voipextension_delete_fields() {
-  $fields = array(VOIPEXTENSION_EXTENSION_LISTED, VOIPEXTENSION_AUDIO_NAME, VOIPEXTENSION_AUDIO_DESCRIPTION, VOIPEXTENSION_AUDIO_GREETING);
-//  $node_type_fields = _voipextension_get_content_type_voipextension_field();
+  module_load_include('inc', 'content', 'includes/content.admin');
+
+  $form_id = 'content_field_remove_form';
+  $fieldset_form_id = 'fieldgroup_remove_group';
+  $fields = array(VOIPEXTENSION_EXTENSION_MAIN_FIELD, VOIPEXTENSION_EXTENSION_LISTED, VOIPEXTENSION_AUDIO_NAME, VOIPEXTENSION_AUDIO_DESCRIPTION, VOIPEXTENSION_AUDIO_GREETING);
+  $form_state = array();
   $node_types = node_get_types();
   foreach ($node_types as $node_type => $node_type_info) {
-    $voipextension_field_name = _voipextension_get_voipextension_field_name($node_type);
-    if ($voipextension_field_name) {
-      _voipextension_delete_voipextension_field($node_type, $voipextension_field_name);
-      _voipextension_delete_extension_listed_field($node_type);
-      _voipextension_delete_audio_fields($node_type);
-      _voipextension_delete_voipextension_group($node_type);
+    if (variable_get('voip_extension_use_'. $node_type, FALSE)) {
+      foreach ($fields as $index => $field_name) {
+        $form_state['values'] = array();
+        $form_state['values'] = array(
+          'type_name' => $node_type,
+          'field_name' => $field_name,
+          'confirm' => 1,
+          'op' => 'Remove',
+          'submit' => 'Remove',
+          'form_id' => $form_id
+        );
+        // Submit the form using these values.
+        drupal_execute($form_id, $form_state, $node_type, $field_name);
+      }
 
-      // Delete the voip extension fields from the selcted field group.
+      $form_state['values'] = array();
+      // Delete VoIP Extension fieldset/group
+      $form_state['values'] = array(
+        'confirm' => 1,
+        'op' => 'Remove',
+        'submit' => 'Remove'
+      );
+      drupal_execute($fieldset_form_id, $form_state, $node_type, VOIPEXTENSION_GROUP_FIELD_NAME);
+      drupal_execute($fieldset_form_id, $form_state, $node_type, VOIPEXTENSION_VOIPDIRECTORY_GROUP_FIELD_NAME);
+
       foreach ($fields as $index => $field_name) {
         $form_values = array();
         $form_values['type_name']  = $node_type;
@@ -40,12 +59,15 @@ function voipextension_delete_fields() {
 /**
  * Change the status of all the existing fields implemented by voipextension module.
  */
-function voipextension_change_fields_status($status) {
+function voipextension_change_fields_status($status, $selected_node_type = '') {
   $node_types = node_get_types();
   foreach ($node_types as $node_type => $node_type_info) {
+    if ($selected_node_type && $selected_node_type != $node_type) {
+      continue 1;
+    }
+    _voipextension_change_extension_main_field_status($node_type, $status);
     _voipextension_change_extension_listed_field_status($node_type, $status);
     _voipextension_change_audio_fields_status($node_type, $status);
-    _voipextension_change_voipextension_group_status($node_type, $status);
   }
 }
 
@@ -100,22 +122,6 @@ function _voipextension_get_content_type_voipextension_field($node_type = '') {
 }
 
 /**
- * Delete the VoIP extension field from the selected content type.
- * @param $node_type
- *   String having content type value
- * @param string $field_name
- */
-function _voipextension_delete_voipextension_field($node_type, $field_name = '') {
-  // Need to load the CCK include file where content_field_instance_create() is defined.
-  module_load_include('inc', 'content', 'includes/content.crud');
-  if (!$field_name) {
-    $field_name = _voipextension_get_content_type_voipextension_field($node_type);
-    $field_name = $field_name[$node_type];
-  }
-  _voipextension_content_field_instance_delete($field_name, $node_type);
-}
-
-/**
  * Helper function to verify that a field of type X and of module Y exists in the given content type or not.
  * @param $content_type
  * @param $field_type
@@ -134,6 +140,31 @@ function _voipextension_check_cck_field_exists($content_type, $field_type, $modu
   }
   return FALSE;
 }
+
+/**
+ * Create Main VoIP Extension field.
+ * @param type $node_type
+ */
+function _voipextension_create_extension_main_field($node_type) {
+  // Need to load the CCK include file where content_field_instance_create() is defined.
+  module_load_include('inc', 'content', 'includes/content.crud');
+
+  $field = _voipextension_main_field_definition($node_type);
+  if (!content_fields($field['field_name'], $node_type)) {
+    $field['type_name'] = $node_type;
+    content_field_instance_create($field);
+  }
+}
+
+/**
+ * Change the status of VoIP Extension field.
+ */
+function _voipextension_change_extension_main_field_status($node_type, $status = 1) {
+  db_query("UPDATE {". content_field_tablename() ."} SET active = %d WHERE field_name = '%s' AND module = '%s'", $status, VOIPEXTENSION_EXTENSION_MAIN_FIELD, 'voipextension');
+  db_query("UPDATE {". content_instance_tablename() ."} SET widget_active = %d WHERE field_name = '%s' AND type_name = '%s' AND widget_module = '%s'", $status, VOIPEXTENSION_EXTENSION_MAIN_FIELD, $node_type, 'voipextension');
+  content_clear_type_cache(TRUE);
+}
+
 
 /**
  * Create an optionwidget field from the provided cck field definition in the
@@ -155,20 +186,6 @@ function _voipextension_create_extension_listed_field($node_type) {
 }
 
 /**
- * Delete the extension listed optionwidget from the selected content type
- * by using the core crud operations of content module.
- * @param $node_type
- *   A valid content type.
- */
-function _voipextension_delete_extension_listed_field($node_type) {
-  // Need to load the CCK include file where content_field_instance_create() is defined.
-  module_load_include('inc', 'content', 'includes/content.crud');
-
-  $field = _voipextension_extension_listed_definition();
-  _voipextension_content_field_instance_delete($field['field_name'], $node_type);
-}
-
-/**
  * Change the status of the extension listed widget to the status of the
  * voipextension module.
  *
@@ -179,10 +196,8 @@ function _voipextension_delete_extension_listed_field($node_type) {
  *   Boolean value having the status, enabled/disabled.
  */
 function _voipextension_change_extension_listed_field_status($node_type, $status = 1) {
-  db_query("UPDATE {". content_field_tablename() ."} SET active = %d WHERE field_name = '%s' AND module = '%s'", $status, VOIPEXTENSION_EXTENSION_LISTED,
-      'number');
-  db_query("UPDATE {". content_instance_tablename() ."} SET widget_active = %d WHERE field_name = '%s' AND type_name = '%s' AND widget_module = '%s'",
-      $status, VOIPEXTENSION_EXTENSION_LISTED, $node_type, 'optionwidgets');
+  db_query("UPDATE {". content_field_tablename() ."} SET active = %d WHERE field_name = '%s' AND module = '%s'", $status, VOIPEXTENSION_EXTENSION_LISTED, 'number');
+  db_query("UPDATE {". content_instance_tablename() ."} SET widget_active = %d WHERE field_name = '%s' AND type_name = '%s' AND widget_module = '%s'", $status, VOIPEXTENSION_EXTENSION_LISTED, $node_type, 'optionwidgets');
   content_clear_type_cache(TRUE);
 }
 
@@ -206,22 +221,6 @@ function _voipextension_create_audio_fields($node_type) {
 }
 
 /**
- * Deletes the audio cck fields from the selected content type by using the
- * core crud operations.
- * @param $node_type
- *   The content type from which the audio fields needs to be deleted.
- */
-function _voipextension_delete_audio_fields($node_type) {
-  // Need to load the CCK include file where content_field_instance_create() is defined.
-  module_load_include('inc', 'content', 'includes/content.crud');
-
-  $fields_to_delete = _voipextension_audio_fields_definitions();
-  foreach ($fields_to_delete as $key => $field) {
-    _voipextension_content_field_instance_delete($field['field_name'], $node_type);
-  }
-}
-
-/**
  * Change the status of the cck audio fields to the status of the voipextensio module.
  * @param $node_type
  *   A valid content type, in which the audio fields needs to be changed.
@@ -231,10 +230,8 @@ function _voipextension_delete_audio_fields($node_type) {
 function _voipextension_change_audio_fields_status($node_type, $status = 1) {
   $fields = _voipextension_audio_fields_definitions();
   foreach ($fields as $key => $field) {
-    db_query("UPDATE {". content_field_tablename() ."} SET active = %d WHERE field_name = '%s' AND module = '%s'", $status, $field['field_name'],
-        'filefield');
-    db_query("UPDATE {". content_instance_tablename() ."} SET widget_active = %d WHERE field_name = '%s' AND type_name = '%s' AND widget_module = '%s'",
-        $status, $field['field_name'], $node_type, 'audiofield');
+    db_query("UPDATE {". content_field_tablename() ."} SET active = %d WHERE field_name = '%s' AND module = '%s'", $status, $field['field_name'], 'filefield');
+    db_query("UPDATE {". content_instance_tablename() ."} SET widget_active = %d WHERE field_name = '%s' AND type_name = '%s' AND widget_module = '%s'", $status, $field['field_name'], $node_type, 'audiofield');
   }
   content_clear_type_cache(TRUE);
 }
@@ -247,24 +244,8 @@ function _voipextension_change_audio_fields_status($node_type, $status = 1) {
  * @return
  *   Saved status
  */
-function _voipextension_create_voipextension_group($node_type) {
-  $group = _voipextension_audio_group_defintion();
+function _voipextension_create_fieldset_group($node_type, $group) {
   return fieldgroup_save_group($node_type, $group);
-}
-
-/**
- * Delete the fieldset from the selected content type.
- * @param $node_type
- *   A valid content type.
- */
-function _voipextension_delete_voipextension_group($node_type) {
-  $group = _voipextension_audio_group_defintion();
-  fieldgroup_delete($node_type, $group['group_name']);
-}
-
-function _voipextension_change_voipextension_group_status($node_type, $status = 1) {
-//  $group = _voipextension_audio_group_defintion();
-//  fieldgroup_delete($node_type, $group['group_name']);
 }
 
 /**
@@ -289,90 +270,4 @@ function _voipextension_directory_field_names($key = '') {
   else {
     return $voip_directory_fields;
   }
-}
-
-/**
- * Find the voipextension field name from the database directly when the module
- *  is going to be uninstalled.
- * @param $content_type
- *   A valid content type for which the field need to be searched.
- * @return
- *   A field name stored in the database.
- */
-function _voipextension_get_voipextension_field_name($content_type) {
-  $field_name = db_result(db_query('SELECT field_name FROM {'. content_instance_tablename() .'} WHERE type_name = "%s" AND widget_type = "%s" AND
-    widget_module = "%s"', $content_type, 'voipextension', 'voipextension'));
-  return $field_name;
-}
-
-/**
- * Delete an existing field instance.
- *
- * @param $field_name
- *   The field name to delete.
- * @param $type_name
- *   The content type where the field instance is going to be deleted.
- * @param $rebuild
- *   TRUE to clear content type caches and rebuild menu (default).
- *   FALSE allows the caller to process several fields at a time quickly, but then
- *   the caller is reponsible to clear content type caches and rebuild menu as soon
- *   as all fields have been processed. For example:
- *   @code
- *     // Delete several fields at a time.
- *     foreach ($fields as $field) {
- *       content_field_instance_delete($field['field_name'], $type_name, FALSE);
- *     }
- *     // Clear caches and rebuild menu.
- *     content_clear_type_cache(TRUE);
- *     menu_rebuild();
- *   @endcode
- * @see content_field_instance_delete()
- * @see content_clear_type_cache()
- * @see menu_rebuild()
- */
-function _voipextension_content_field_instance_delete($field_name, $type_name, $rebuild = TRUE) {
-  include_once('./'. drupal_get_path('module', 'content') .'/includes/content.admin.inc');
-
-  // Get the previous field value.
-  $field = array_pop(content_field_instance_read(array('field_name' => $field_name, 'type_name' => $type_name), TRUE));
-
-  // Invoke hook_content_fieldapi().
-  module_invoke_all('content_fieldapi', 'delete instance', $field);
-
-  db_query("DELETE FROM {". content_instance_tablename() .
-    "} WHERE field_name = '%s' AND type_name = '%s'", $field['field_name'], $field['type_name']);
-
-  // If no instances remain, delete the field entirely.
-  $instances = content_field_instance_read(array('field_name' => $field_name));
-  if (sizeof($instances) < 1) {
-    db_query("DELETE FROM {". content_field_tablename() ."} WHERE field_name = '%s'", $field['field_name']);
-    content_alter_schema($field, array());
-  }
-  // If only one instance remains, we may need to change the database
-  // representation for this field.
-  elseif (sizeof($instances) == 1 && !($field['multiple'])) {
-    // Multiple-valued fields are always stored per-field-type.
-    $instance = $instances[0];
-    $new_instance = $instance;
-    $new_instance['db_storage'] = CONTENT_DB_STORAGE_PER_CONTENT_TYPE;
-    _content_field_write($new_instance, 'update');
-
-    content_alter_schema($instance, $new_instance);
-  }
-
-  // If the deleted instance was the last field for the content type,
-  // we drop the per-type table. We also consider possibly inactive fields.
-  if (!content_field_instance_read(array('type_name' => $field['type_name']), TRUE)) {
-    $base_tablename = _content_tablename($field['type_name'], CONTENT_DB_STORAGE_PER_CONTENT_TYPE);
-    if (db_table_exists($base_tablename)) {
-      db_drop_table($ret, $base_tablename);
-    }
-  }
-
-  if ($rebuild) {
-    content_clear_type_cache(TRUE);
-    menu_rebuild();
-  }
-
-  return $field;
 }
